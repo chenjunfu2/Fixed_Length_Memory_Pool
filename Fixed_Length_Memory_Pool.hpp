@@ -1,6 +1,4 @@
 #pragma once
-
-
 /*
 用位图索引已分配内存块链表节点，用空闲内存栈节点索引内存位图
 
@@ -131,11 +129,11 @@ public:
 		else
 		{
 			//完全初始化
-			char *pMemBlockAddr = (char *)pMemPool;
+			void *pMemBlockAddr = pMemPool;
 			for (size_t i = 0; i < szMemBlockNum; ++i)
 			{
 				pArrFreeMemBlockStack[i] = pMemBlockAddr;
-				pMemBlockAddr += szMemBlockFixSize;
+				pMemBlockAddr = (char *)pMemBlockAddr + szMemBlockFixSize;
 			}
 		}
 	}
@@ -203,7 +201,7 @@ public:
 			//如果是则需要检查下一个栈数据是否被初始化过，不是的话要进行初始化
 			if (szStackTop < szMemBlockNum && pArrFreeMemBlockStack[szStackTop] == nullptr)
 			{
-				pArrFreeMemBlockStack[szStackTop] = pFreeMemBlock + szMemBlockFixSize;
+				pArrFreeMemBlockStack[szStackTop] = (char *)pFreeMemBlock + szMemBlockFixSize;
 			}
 		}
 

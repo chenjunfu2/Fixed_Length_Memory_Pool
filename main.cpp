@@ -9,8 +9,8 @@
 
 int main(void)
 {
-	FixLen_MemPool<void> a(10, 1024);
-	//FixLen_MemPool<void, true> a(10, 1024);
+	//FixLen_MemPool<void> a(10, 1024);
+	FixLen_MemPool<void, true> a(10, 1024);
 	std::vector<void *> v;
 
 	//分配一部分
@@ -19,6 +19,8 @@ int main(void)
 		v.push_back(a.AllocMemBlock());
 		//printf("%d alloc:0x%p\n", i, v.back());
 	}
+	a.FreeAllMemBlock();//全部释放
+
 	//随机释放+分配
 	srand(1);
 	void *pTemp;
@@ -66,8 +68,6 @@ int main(void)
 			putchar('\n');
 		}
 	}
-
-	a.FreeAllMemBlock();
 
 	return 0;
 }
