@@ -83,10 +83,11 @@ size_t fixed_length：用户初始化时确定的长度
 释放：O(1)
 */
 
-#include <new>
+#include <malloc.h>
 #include <algorithm>
 
-template <typename type, bool bLazyInit = false>//分配时的返回类型、懒惰初始化策略（此策略会修改代码段，所以使用模板+constexpr if）
+
+template <typename type, bool bLazyInit = false>//分配时的返回类型、懒惰初始化策略（此策略会修改代码段，所以使用模板 & constexpr if）
 class FixLen_MemPool
 {
 private:
@@ -102,7 +103,16 @@ private:
 	};
 
 	size_t szMemBlockFixSize = 0;//用户初始化时需要的定长内存长度（size：字节数）
-
+protected:
+	template<typename T>
+	void ThrowMalloc(T **p, size_t szNum)
+	{
+		*p = (T *)malloc(sizeof(T) * szNum);
+		if (*p == nullptr)
+		{
+			throw std::bad_alloc();
+		}
+	}
 public:
 	FixLen_MemPool(size_t _szMemBlockFixSize = sizeof(type), size_t _szMemBlockPreAllocNum = 1024) :
 		szMemBlockFixSize(_szMemBlockFixSize)
@@ -112,14 +122,14 @@ public:
 
 		//先分配内存池
 		szPoolSize = szMemBlockNum * szMemBlockFixSize;
-		pMemPool = new char[szPoolSize];
+		ThrowMalloc((char **)&pMemPool, szPoolSize);//内存池无类型，直接按char分配
 
 		//再分配内存位图
-		bArrMemBlockBitmap = new bool[szMemBlockNum];
+		ThrowMalloc(&bArrMemBlockBitmap, szMemBlockNum);
 		std::fill_n(bArrMemBlockBitmap, szMemBlockNum, false);//设置位图为未分配
 
 		//接着分配栈数组
-		pArrFreeMemBlockStack = new void *[szMemBlockNum];
+		ThrowMalloc(&pArrFreeMemBlockStack, szMemBlockNum);
 		if constexpr (bLazyInit == true)//设置栈数据
 		{
 			//懒惰初始化
@@ -166,16 +176,16 @@ public:
 
 	~FixLen_MemPool(void) noexcept
 	{
-		delete[] pMemPool;
+		free(pMemPool);
 		pMemPool = nullptr;
 
 		szPoolSize = 0;
 		szMemBlockNum = 0;
 
-		delete[] bArrMemBlockBitmap;
+		free(bArrMemBlockBitmap);
 		bArrMemBlockBitmap = nullptr;
 
-		delete[] pArrFreeMemBlockStack;
+		free(pArrFreeMemBlockStack);
 		pArrFreeMemBlockStack = nullptr;
 
 		szStackTop = 0;
@@ -210,7 +220,7 @@ public:
 		//设置为分配状态
 		bArrMemBlockBitmap[szBitmapIndex] = true;
 
-		return pFreeMemBlock;
+		return (type *)pFreeMemBlock;
 	}
 
 	bool FreeMemBlock(type *pAllocMemBlock) noexcept//释放非内存池分配的内存、多次释放会返回false

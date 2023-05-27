@@ -4,8 +4,7 @@
 #include <stdlib.h>
 #include <vector>
 
-#define printf
-#define putchar
+//#define printf
 
 int main(void)
 {
@@ -37,7 +36,7 @@ int main(void)
 			}
 			else
 			{
-				printf("alloc:fail\t");
+				printf("alloc:fail\t\t");
 			}
 		}
 		else// Õ∑≈
@@ -59,13 +58,13 @@ int main(void)
 			}
 			else
 			{
-				printf("free :fail\t");
+				printf("free :fail\t\t");
 			}
 		}
 
 		if (i % 5 == 0)
 		{
-			putchar('\n');
+			printf("\n");
 		}
 	}
 
