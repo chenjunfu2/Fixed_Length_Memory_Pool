@@ -86,32 +86,29 @@ size_t fixed_length：用户初始化时确定的长度
 #include <malloc.h>
 #include <algorithm>
 
-
 template <typename type, bool bLazyInit = false>//分配时的返回类型、懒惰初始化策略（此策略会修改代码段，所以使用模板 & constexpr if）
 class FixLen_MemPool
 {
 private:
-	struct//后续内存池扩容用，用多个池拼接组成链表，当前不处理此情况，使用匿名结构不影响编程
-	{
-		void *pMemPool = nullptr;//指针 内存池
-		size_t szPoolSize = 0;//内存池大小（size：字节数）
-		size_t szMemBlockNum = 0;//内存池中总内存块个数
-
-		bool *bArrMemBlockBitmap = nullptr;//bool数组 内存位图
-		void **pArrFreeMemBlockStack = nullptr;//指针数组 栈
-		size_t szStackTop = 0;//栈顶索引（栈生长方向：由高到低），也代表着已使用的内存块数目，即内存池中已分配出去的内存块数
-	};
-
 	size_t szMemBlockFixSize = 0;//用户初始化时需要的定长内存长度（size：字节数）
+
+	void *pMemPool = nullptr;//指针 内存池
+	size_t szPoolSize = 0;//内存池大小（size：字节数）
+	size_t szMemBlockNum = 0;//内存池中总内存块个数
+
+	bool *bArrMemBlockBitmap = nullptr;//bool数组 内存位图
+	void **pArrFreeMemBlockStack = nullptr;//指针数组 栈
+	size_t szStackTop = 0;//栈顶索引（栈生长方向：由高到低），也代表着已使用的内存块数目，即内存池中已分配出去的内存块数
 protected:
 	template<typename T>
-	void ThrowMalloc(T **p, size_t szNum)
+	T *ThrowMalloc(size_t szNum)
 	{
-		*p = (T *)malloc(sizeof(T) * szNum);
-		if (*p == nullptr)
+		T *p = (T *)malloc(sizeof(T) * szNum);
+		if (p == nullptr)
 		{
 			throw std::bad_alloc();
 		}
+		return p;
 	}
 public:
 	FixLen_MemPool(size_t _szMemBlockFixSize = sizeof(type), size_t _szMemBlockPreAllocNum = 1024) :
@@ -122,14 +119,14 @@ public:
 
 		//先分配内存池
 		szPoolSize = szMemBlockNum * szMemBlockFixSize;
-		ThrowMalloc((char **)&pMemPool, szPoolSize);//内存池无类型，直接按char分配
+		pMemPool = ThrowMalloc<char>(szPoolSize);//内存池无类型，直接按char分配
 
 		//再分配内存位图
-		ThrowMalloc(&bArrMemBlockBitmap, szMemBlockNum);
+		bArrMemBlockBitmap = ThrowMalloc<bool>(szMemBlockNum);
 		std::fill_n(bArrMemBlockBitmap, szMemBlockNum, false);//设置位图为未分配
 
 		//接着分配栈数组
-		ThrowMalloc(&pArrFreeMemBlockStack, szMemBlockNum);
+		pArrFreeMemBlockStack = ThrowMalloc<void *>(szMemBlockNum);
 		if constexpr (bLazyInit == true)//设置栈数据
 		{
 			//懒惰初始化
@@ -151,20 +148,19 @@ public:
 	FixLen_MemPool(const FixLen_MemPool &) = delete;//禁用类拷贝构造
 
 	FixLen_MemPool(FixLen_MemPool &&_Move) noexcept ://移动构造
-		szMemBlockFixSize(_Move.szMemBlockFixSize)
+		szMemBlockFixSize(_Move.szMemBlockFixSize),
+
+		pMemPool(_Move.pMemPool),
+		szPoolSize(_Move.szPoolSize),
+		szMemBlockNum(_Move.szMemBlockNum),
+
+		bArrMemBlockBitmap(_Move.bArrMemBlockBitmap),
+		pArrFreeMemBlockStack(_Move.pArrFreeMemBlockStack),
+		szStackTop(_Move.szStackTop)
 	{
-		_Move.szMemBlockFixSize = 0;
-
-		//浅复制成员
-		pMemPool = _Move.pMemPool;
-		szPoolSize = _Move.szPoolSize;
-		szMemBlockNum = _Move.szMemBlockNum;
-
-		bArrMemBlockBitmap = _Move.bArrMemBlockBitmap;
-		pArrFreeMemBlockStack = _Move.pArrFreeMemBlockStack;
-		szStackTop = _Move.szStackTop;
-
 		//清理移动对象成员
+		_Move.szMemBlockFixSize = 0;
+		
 		_Move.pMemPool = nullptr;
 		_Move.szPoolSize = 0;
 		_Move.szMemBlockNum = 0;
@@ -176,21 +172,15 @@ public:
 
 	~FixLen_MemPool(void) noexcept
 	{
-		free(pMemPool);
-		pMemPool = nullptr;
+		szMemBlockFixSize = 0;
 
+		free(pMemPool), pMemPool = nullptr;
 		szPoolSize = 0;
 		szMemBlockNum = 0;
 
-		free(bArrMemBlockBitmap);
-		bArrMemBlockBitmap = nullptr;
-
-		free(pArrFreeMemBlockStack);
-		pArrFreeMemBlockStack = nullptr;
-
+		free(bArrMemBlockBitmap), bArrMemBlockBitmap = nullptr;
+		free(pArrFreeMemBlockStack), pArrFreeMemBlockStack = nullptr;
 		szStackTop = 0;
-
-		szMemBlockFixSize = 0;
 	}
 
 	type *AllocMemBlock(void) noexcept
@@ -279,5 +269,46 @@ public:
 				pMemBlockAddr += szMemBlockFixSize;
 			}
 		}
+	}
+
+	bool IsPoolAlloc(type *pMemBlock)
+	{
+		if (pMemBlock == nullptr ||//空指针
+			pMemBlock < pMemPool || (size_t)pMemBlock >= (size_t)pMemPool + szPoolSize ||//超出内存池范围
+			((size_t)pMemBlock - (size_t)pMemPool) % szMemBlockFixSize != 0)//不在定长内存块边界上
+		{
+			return false;
+		}
+
+		//计算映射
+		size_t szBitmapIndex = ((size_t)pMemBlock - (size_t)pMemPool) / szMemBlockFixSize;
+
+		//内存已经是释放状态
+		if (bArrMemBlockBitmap[szBitmapIndex] == false)
+		{
+			return false;
+		}
+
+		return true;
+	}
+
+	size_t GetMemBlockFixSize(void)
+	{
+		return szMemBlockFixSize;
+	}
+
+	size_t GetPoolSize(void)
+	{
+		return szPoolSize;
+	}
+
+	size_t GetMemBlockNum(void)
+	{
+		return szMemBlockNum;
+	}
+
+	size_t GetMemBlockUse(void)
+	{
+		return szStackTop;
 	}
 };
