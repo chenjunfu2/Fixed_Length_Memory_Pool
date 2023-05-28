@@ -23,9 +23,8 @@ int main(void)
 
 	clock_t my;
 	{
-		FixLen_MemPool<void> a(BLOCK_SIZE, BLOCK_NUM);
-		
 		clock_t start = clock();
+		FixLen_MemPool<void> a(BLOCK_SIZE, BLOCK_NUM);
 		for (int i = 0; i < BLOCK_NUM; ++i)
 		{
 			pArr[i] = a.AllocMemBlock();
@@ -35,6 +34,7 @@ int main(void)
 		{
 			a.FreeMemBlock(pArr[i]);
 		}
+		a.~a();
 		clock_t end = clock();
 
 		printf("my:\n    alloc=%.4lfs\n     free=%.4lfs\n      all=%.4lfs\n\n", CLOCKTOSEC(start, alloc), CLOCKTOSEC(alloc, end), CLOCKTOSEC(start, end));
@@ -59,7 +59,25 @@ int main(void)
 		n = end - start;
 	}
 
-	printf("ratio:\n    new all/my all=%.6lfr\n", (long double)n / (long double)my);
+	clock_t m;
+	{
+		clock_t start = clock();
+		for (int i = 0; i < BLOCK_NUM; ++i)
+		{
+			pArr[i] = malloc(BLOCK_SIZE);
+		}
+		clock_t alloc = clock();
+		for (int i = 0; i < BLOCK_NUM; ++i)
+		{
+			free(pArr[i]);
+		}
+		clock_t end = clock();
+
+		printf("malloc:\n    alloc=%.4lfs\n     free=%.4lfs\n      all=%.4lfs\n\n", CLOCKTOSEC(start, alloc), CLOCKTOSEC(alloc, end), CLOCKTOSEC(start, end));
+		m = end - start;
+	}
+
+	printf("ratio:\n       new all/my all=%.6lfr\n    malloc all/my all=%.6lfr\n", (long double)n / (long double)my, (long double)m / (long double)my);
 
 	return 0;
 }
