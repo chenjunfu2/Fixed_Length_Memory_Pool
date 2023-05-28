@@ -34,7 +34,7 @@ int main(void)
 		{
 			a.FreeMemBlock(pArr[i]);
 		}
-		a.~a();
+		a.~FixLen_MemPool<void>();
 		clock_t end = clock();
 
 		printf("my:\n    alloc=%.4lfs\n     free=%.4lfs\n      all=%.4lfs\n\n", CLOCKTOSEC(start, alloc), CLOCKTOSEC(alloc, end), CLOCKTOSEC(start, end));
@@ -81,6 +81,8 @@ int main(void)
 
 	return 0;
 }
+
+#include <limits.h>
 
 //ÀÊª˙∑÷≈‰ Õ∑≈≤‚ ‘
 int maind(void)
