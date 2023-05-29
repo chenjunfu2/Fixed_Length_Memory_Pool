@@ -9,7 +9,7 @@
 //0x7fffffff//数组上限
 //0x80000000//映像上限
 
-#define BLOCK_SIZE 4
+#define BLOCK_SIZE 12
 #define BLOCK_NUM 134217728
 
 #define CLOCKTOSEC(start,end) ((long double)((end) - (start)) / (long double)CLOCKS_PER_SEC)
@@ -24,7 +24,7 @@ int main(void)
 	clock_t my;
 	{
 		clock_t start = clock();
-		FixLen_MemPool<void> a(BLOCK_SIZE, BLOCK_NUM);
+		FixLen_MemPool<void, false> a(BLOCK_SIZE, BLOCK_NUM);
 		for (int i = 0; i < BLOCK_NUM; ++i)
 		{
 			pArr[i] = a.AllocMemBlock();
@@ -34,11 +34,31 @@ int main(void)
 		{
 			a.FreeMemBlock(pArr[i]);
 		}
-		a.~FixLen_MemPool<void>();
+		a.~FixLen_MemPool<void, false>();
 		clock_t end = clock();
 
 		printf("my:\n    alloc=%.4lfs\n     free=%.4lfs\n      all=%.4lfs\n\n", CLOCKTOSEC(start, alloc), CLOCKTOSEC(alloc, end), CLOCKTOSEC(start, end));
 		my = end - start;
+	}
+
+	clock_t my_lazy;
+	{
+		clock_t start = clock();
+		FixLen_MemPool<void, true> a(BLOCK_SIZE, BLOCK_NUM);
+		for (int i = 0; i < BLOCK_NUM; ++i)
+		{
+			pArr[i] = a.AllocMemBlock();
+		}
+		clock_t alloc = clock();
+		for (int i = 0; i < BLOCK_NUM; ++i)
+		{
+			a.FreeMemBlock(pArr[i]);
+		}
+		a.~FixLen_MemPool<void, true>();
+		clock_t end = clock();
+
+		printf("my_lazy:\n    alloc=%.4lfs\n     free=%.4lfs\n      all=%.4lfs\n\n", CLOCKTOSEC(start, alloc), CLOCKTOSEC(alloc, end), CLOCKTOSEC(start, end));
+		my_lazy = end - start;
 	}
 
 	clock_t n;
@@ -77,7 +97,10 @@ int main(void)
 		m = end - start;
 	}
 
-	printf("ratio:\n       new all/my all=%.6lfr\n    malloc all/my all=%.6lfr\n", (long double)n / (long double)my, (long double)m / (long double)my);
+	printf("ratio:\n");
+	printf("       new/my     =%.6lfr\n    malloc/my     =%.6lfr\n", (long double)n / (long double)my, (long double)m / (long double)my);
+	printf("       new/my_lazy=%.6lfr\n    malloc/my_lazy=%.6lfr\n", (long double)n / (long double)my_lazy, (long double)m / (long double)my_lazy);
+	printf("    malloc/new    =%.6lfr\n        my/my_lazy=%.6lfr\n", (long double)m / (long double)n, (long double)my / (long double)my_lazy);
 
 	return 0;
 }
@@ -146,6 +169,78 @@ int maind(void)
 			printf("\n");
 		}
 	}
+
+	return 0;
+}
+
+
+#include <iostream>
+#include <chrono>
+#include "Fixed_Length_Memory_Pool.hpp"
+using namespace std;
+
+struct Ctest
+{
+	int a;
+	int b;
+	int c;
+};
+
+#define SIZE sizeof(Ctest)
+#define MAX_CYCLE 134217728
+
+void *arr[MAX_CYCLE];
+
+int maine(void)
+{
+	using Micro = std::chrono::duration<double, micro>;
+#define Now() chrono::system_clock::now();
+
+	auto start = Now();
+	auto end = Now();
+
+	start = Now();
+	{
+		for (int i = 0; i < MAX_CYCLE; i++)
+			arr[i] = new char[SIZE];
+		for (int i = 0; i < MAX_CYCLE; ++i)
+			delete[] arr[i];
+	}
+	end = Now();
+	std::cout << Micro(end - start) << std::endl;
+
+	start = Now();
+	{
+		for (int i = 0; i < MAX_CYCLE; i++)
+			arr[i] = new Ctest;
+		for (int i = 0; i < MAX_CYCLE; ++i)
+			delete arr[i];
+	}
+	end = Now();
+	std::cout << Micro(end - start) << std::endl;
+
+	start = Now();
+	{
+		FixLen_MemPool<void, false> mem_pool(SIZE, MAX_CYCLE);
+		for (int i = 0; i < MAX_CYCLE; ++i)
+			arr[i] = mem_pool.AllocMemBlock();
+		for (int i = 0; i < MAX_CYCLE; ++i)
+			mem_pool.FreeMemBlock(arr[i]);
+	}
+	end = Now();
+	std::cout << Micro(end - start) << std::endl;
+
+	start = Now();
+	{
+		FixLen_MemPool<void, true> mem_pool(SIZE, MAX_CYCLE);
+		for (int i = 0; i < MAX_CYCLE; ++i)
+			arr[i] = mem_pool.AllocMemBlock();
+		for (int i = 0; i < MAX_CYCLE; ++i)
+			mem_pool.FreeMemBlock(arr[i]);
+	}
+	end = Now();
+	std::cout << Micro(end - start) << std::endl;
+
 
 	return 0;
 }
