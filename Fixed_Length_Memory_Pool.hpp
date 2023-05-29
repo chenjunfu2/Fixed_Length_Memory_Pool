@@ -131,23 +131,6 @@ protected:
 	{
 		return pMemPool;
 	}
-
-	int CmpPointAndPool(const void *p) const//返回-1代表小于内存池基地址，返回0代表在内存池中，返回1代表大等于内存池尾部
-	{
-		if (p < pMemPool)
-		{
-			return -1;
-		}
-		else if (p >= (char *)pMemPool + szPoolSize)
-		{
-			return 1;
-		}
-		else//在内存池中
-		{
-			return 0;
-		}
-	}
-
 public:
 	FixLen_MemPool(size_t _szMemBlockFixSize = sizeof(type), size_t _szMemBlockPreAllocNum = 1024) :
 		szMemBlockFixSize(_szMemBlockFixSize)
@@ -304,6 +287,22 @@ public:
 		}
 	}
 
+	int CmpPointAndPool(const void *p) const//返回-1代表小于内存池基地址，返回0代表在内存池中，返回1代表大等于内存池尾部
+	{
+		if (p < pMemPool)
+		{
+			return -1;
+		}
+		else if (p >= (char *)pMemPool + szPoolSize)
+		{
+			return 1;
+		}
+		else//在内存池中
+		{
+			return 0;
+		}
+	}
+
 	size_t GetMemBlockFixSize(void) const
 	{
 		return szMemBlockFixSize;
@@ -326,28 +325,3 @@ public:
 };
 
 #undef SENTINEL_POINTER
-
-
-//链表扩容法、树扩容法
-template <typename type, bool bLazyInit = false>
-class AutoExpand_FixLen_MemPool :public FixLen_MemPool<type, bLazyInit>
-{
-private:
-	FixLen_MemPool<type, bLazyInit> *pNextPool;
-public:
-	AutoExpand_FixLen_MemPool() :pNextPool(NULL)
-	{
-
-
-
-	}
-
-	~AutoExpand_FixLen_MemPool()
-	{
-
-
-
-
-
-	}
-};

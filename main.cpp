@@ -1,4 +1,5 @@
-#include "Fixed_Length_Memory_Pool.hpp"
+//#include "Fixed_Length_Memory_Pool.hpp"
+#include "Automatic_Expand_Fixed_Length_Memory_Pool.hpp"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -9,8 +10,10 @@
 //0x7fffffff//数组上限
 //0x80000000//映像上限
 
-#define BLOCK_SIZE 12
-#define BLOCK_NUM 134217728
+#define BLOCK_SIZE 8
+//#define BLOCK_NUM 134217728
+#define BLOCK_NUM (67108864)
+//#define BLOCK_NUM 32768
 
 #define CLOCKTOSEC(start,end) ((long double)((end) - (start)) / (long double)CLOCKS_PER_SEC)
 
@@ -20,82 +23,81 @@ void *pArr[BLOCK_NUM];
 int main(void)
 {
 	printf("info:\n    block size=%ldB\n     block num=%ldc\n      mem size=%.4lfMB\n", BLOCK_SIZE, BLOCK_NUM, (long double)BLOCK_SIZE * (long double)BLOCK_NUM / (long double)1024 / (long double)1024);
+	clock_t start, alloc, end;
 
-	clock_t my;
+	start = clock();
 	{
-		clock_t start = clock();
-		FixLen_MemPool<void, false> a(BLOCK_SIZE, BLOCK_NUM);
+		AutoExpand_FixLen_MemPool<void, true, true> a(BLOCK_SIZE, BLOCK_NUM / 16);
 		for (int i = 0; i < BLOCK_NUM; ++i)
 		{
 			pArr[i] = a.AllocMemBlock();
 		}
-		clock_t alloc = clock();
+		alloc = clock();
 		for (int i = 0; i < BLOCK_NUM; ++i)
 		{
 			a.FreeMemBlock(pArr[i]);
 		}
-		a.~FixLen_MemPool<void, false>();
-		clock_t end = clock();
-
-		printf("my:\n    alloc=%.4lfs\n     free=%.4lfs\n      all=%.4lfs\n\n", CLOCKTOSEC(start, alloc), CLOCKTOSEC(alloc, end), CLOCKTOSEC(start, end));
-		my = end - start;
 	}
+	end = clock();
+	clock_t my = end - start;
+	printf("my:\n    alloc=%.4lfs\n     free=%.4lfs\n      all=%.4lfs\n\n", CLOCKTOSEC(start, alloc), CLOCKTOSEC(alloc, end), CLOCKTOSEC(start, end));
 
-	clock_t my_lazy;
-	{
-		clock_t start = clock();
-		FixLen_MemPool<void, true> a(BLOCK_SIZE, BLOCK_NUM);
+
+
+	start = clock();
+	{ 
+		AutoExpand_FixLen_MemPool<void, true, false> a(BLOCK_SIZE, BLOCK_NUM / 16);
 		for (int i = 0; i < BLOCK_NUM; ++i)
 		{
 			pArr[i] = a.AllocMemBlock();
 		}
-		clock_t alloc = clock();
+		alloc = clock();
 		for (int i = 0; i < BLOCK_NUM; ++i)
 		{
 			a.FreeMemBlock(pArr[i]);
 		}
-		a.~FixLen_MemPool<void, true>();
-		clock_t end = clock();
-
-		printf("my_lazy:\n    alloc=%.4lfs\n     free=%.4lfs\n      all=%.4lfs\n\n", CLOCKTOSEC(start, alloc), CLOCKTOSEC(alloc, end), CLOCKTOSEC(start, end));
-		my_lazy = end - start;
 	}
+	end = clock();
+	clock_t my_lazy = end - start;
+	printf("my_lazy:\n    alloc=%.4lfs\n     free=%.4lfs\n      all=%.4lfs\n\n", CLOCKTOSEC(start, alloc), CLOCKTOSEC(alloc, end), CLOCKTOSEC(start, end));
 
-	clock_t n;
+
+
+	start = clock();
 	{
-		clock_t start = clock();
 		for (int i = 0; i < BLOCK_NUM; ++i)
 		{
 			pArr[i] = new char[BLOCK_SIZE];
 		}
-		clock_t alloc = clock();
+		alloc = clock();
 		for (int i = 0; i < BLOCK_NUM; ++i)
 		{
 			delete[] (char *)pArr[i];
 		}
-		clock_t end = clock();
-
-		printf("new:\n    alloc=%.4lfs\n     free=%.4lfs\n      all=%.4lfs\n\n", CLOCKTOSEC(start, alloc), CLOCKTOSEC(alloc, end), CLOCKTOSEC(start, end));
-		n = end - start;
 	}
+	end = clock();
+	clock_t n = end - start;
+	printf("new:\n    alloc=%.4lfs\n     free=%.4lfs\n      all=%.4lfs\n\n", CLOCKTOSEC(start, alloc), CLOCKTOSEC(alloc, end), CLOCKTOSEC(start, end));
+	
 
-	clock_t m;
+
+	start = clock();
 	{
-		clock_t start = clock();
 		for (int i = 0; i < BLOCK_NUM; ++i)
 		{
 			pArr[i] = malloc(BLOCK_SIZE);
 		}
-		clock_t alloc = clock();
+		alloc = clock();
 		for (int i = 0; i < BLOCK_NUM; ++i)
 		{
 			free(pArr[i]);
 		}
-		clock_t end = clock();
-
-		printf("malloc:\n    alloc=%.4lfs\n     free=%.4lfs\n      all=%.4lfs\n\n", CLOCKTOSEC(start, alloc), CLOCKTOSEC(alloc, end), CLOCKTOSEC(start, end));
-		m = end - start;
 	}
+	end = clock();
+	clock_t m = end - start;
+	printf("malloc:\n    alloc=%.4lfs\n     free=%.4lfs\n      all=%.4lfs\n\n", CLOCKTOSEC(start, alloc), CLOCKTOSEC(alloc, end), CLOCKTOSEC(start, end));
+
+
 
 	printf("ratio:\n");
 	printf("       new/my     =%.6lfr\n    malloc/my     =%.6lfr\n", (long double)n / (long double)my, (long double)m / (long double)my);
@@ -204,7 +206,7 @@ int maine(void)
 		for (int i = 0; i < MAX_CYCLE; i++)
 			arr[i] = new char[SIZE];
 		for (int i = 0; i < MAX_CYCLE; ++i)
-			delete[] arr[i];
+			delete[] (char *)arr[i];
 	}
 	end = Now();
 	std::cout << Micro(end - start) << std::endl;
