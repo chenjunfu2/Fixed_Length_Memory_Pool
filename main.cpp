@@ -1,5 +1,4 @@
-//#include "Fixed_Length_Memory_Pool.hpp"
-#include "Automatic_Expand_Fixed_Length_Memory_Pool.hpp"
+#include "Fixed_Length_Memory_Pool.hpp"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -27,7 +26,7 @@ int main(void)
 
 	start = clock();
 	{
-		AutoExpand_FixLen_MemPool<void, true, true> a(BLOCK_SIZE, BLOCK_NUM / 16);
+		FixLen_MemPool<void, false> a(BLOCK_SIZE, BLOCK_NUM);
 		for (int i = 0; i < BLOCK_NUM; ++i)
 		{
 			pArr[i] = a.AllocMemBlock();
@@ -46,7 +45,7 @@ int main(void)
 
 	start = clock();
 	{ 
-		AutoExpand_FixLen_MemPool<void, true, false> a(BLOCK_SIZE, BLOCK_NUM / 16);
+		FixLen_MemPool<void, true> a(BLOCK_SIZE, BLOCK_NUM);
 		for (int i = 0; i < BLOCK_NUM; ++i)
 		{
 			pArr[i] = a.AllocMemBlock();

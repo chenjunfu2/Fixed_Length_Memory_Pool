@@ -89,25 +89,47 @@ size_t fixed_length：用户初始化时确定的长度
 
 #define SENTINEL_POINTER ((void *)(NULL + 1))//哨兵指针
 
-template <typename type, bool bLazyInit = false>//分配时的返回类型、懒惰初始化策略（此策略会修改代码段，所以使用模板 & constexpr if）
+struct default_alloc
+{
+	void *operator()(size_t szMemSize)
+	{
+		return malloc(szMemSize);
+	}
+};
+
+struct default_free
+{
+	void operator()(void *pMem)
+	{
+		return free(pMem);
+	}
+};
+
+template <typename type, bool bLazyInit = true, size_t szAlignment = 4, typename alloc_func = default_alloc, typename free_func = default_free>//分配时的返回类型、懒惰初始化策略（此策略会修改代码段，所以使用模板 & constexpr if）
 class FixLen_MemPool
 {
+	static_assert(szAlignment == 1 || (szAlignment != 0 && szAlignment % 2 == 0));
 private:
 	size_t szMemBlockFixSize = 0;//用户初始化时需要的定长内存长度（size：字节数）
+	
+	bool *bArrMemBlockBitmap = NULL;//bool数组内存位图
+	void **pArrMemBlockStack = NULL;//指针数组 栈
+	size_t szStackTop = 0;//栈顶索引（栈生长方向：由高到低），也代表着已使用的内存块数目，即内存池中已分配出去的内存块数
 
 	void *pMemPool = NULL;//指针 内存池
 	size_t szPoolSize = 0;//内存池大小（size：字节数）
 	size_t szMemBlockNum = 0;//内存池中总内存块个数
 
-	bool *bArrMemBlockBitmap = NULL;//bool数组 内存位图
-	void **pArrFreeMemBlockStack = NULL;//指针数组 栈
-	size_t szStackTop = 0;//栈顶索引（栈生长方向：由高到低），也代表着已使用的内存块数目，即内存池中已分配出去的内存块数
+	void *pBaseMem = NULL;//内存基地址
+	size_t szBaseMemSize = 0;//总内存大小
 
+	//用户自定义函数
+	alloc_func fAlloc;
+	free_func fFree;
 protected:
-	template<typename T>
-	T *ThrowMalloc(size_t szNum)
+	void *ThrowMalloc(size_t szMemSize)
 	{
-		T *p = (T *)malloc(sizeof(T) * szNum);
+		void *p = fAlloc(szMemSize);
 		if (p == NULL)
 		{
 			throw std::bad_alloc();
@@ -115,16 +137,14 @@ protected:
 		return p;
 	}
 
-	template<typename T>
-	T *ThrowRealloc(void *pOld, size_t szNewNum)
+	size_t AlignedSize(size_t szSize)
 	{
-		T *pNew = (T *)realloc(pOld, sizeof(T) * szNewNum);
-		if (pNew == NULL)
-		{
-			throw std::bad_alloc();
-		}
+		return (szSize + szAlignment - 1) & ~(szAlignment - 1);
+	}
 
-		return pNew;
+	void* AlignedMem(void* pMem)
+	{
+		return (void *)(((uintptr_t)pMem + szAlignment - 1) & ~(szAlignment - 1));
 	}
 
 	const void *GetMemPool(void) const
@@ -133,26 +153,22 @@ protected:
 	}
 public:
 	FixLen_MemPool(size_t _szMemBlockFixSize = sizeof(type), size_t _szMemBlockPreAllocNum = 1024) :
-		szMemBlockFixSize(_szMemBlockFixSize)
+		szMemBlockFixSize(_szMemBlockFixSize),
+		szMemBlockNum(_szMemBlockPreAllocNum)
 	{
-		//初始化内存块个数
-		szMemBlockNum = _szMemBlockPreAllocNum;
-		//计算内存池大小
-		szPoolSize = szMemBlockNum * szMemBlockFixSize;
+		//位图、栈、内存池的起始地址全部对齐到szAlignment
+		size_t szBitMapAlignedSize = AlignedSize(szMemBlockNum * sizeof(*bArrMemBlockBitmap));//从上一个对齐地址加上这个数值就是下一个对齐地址的开始，下同
+		size_t szStackAlignedSize = AlignedSize((szMemBlockNum + bLazyInit) * sizeof(*pArrMemBlockStack));//此处+bLazyInit确保懒惰初始化多分配一个栈空间
+		szPoolSize = szMemBlockNum * szMemBlockFixSize;//此处内存池后无后继结构，无需对齐
 
-		//先分配内存池
-		pMemPool = ThrowMalloc<char>(szPoolSize);//内存池无类型，直接按char分配
-		//再分配内存位图
-		bArrMemBlockBitmap = ThrowMalloc<bool>(szMemBlockNum);
-		//接着分配栈数组
-		if constexpr (bLazyInit == true)
-		{
-			pArrFreeMemBlockStack = ThrowMalloc<void *>(szMemBlockNum + 1);//懒惰初始化时需分配多一个用于做哨兵标记
-		}
-		else
-		{
-			pArrFreeMemBlockStack = ThrowMalloc<void *>(szMemBlockNum);//完全初始化时只需分配所需大小
-		}
+		//一次性分配
+		szBaseMemSize = szBitMapAlignedSize + szStackAlignedSize + szPoolSize + szAlignment - 1;//计算总所需内存
+		pBaseMem = ThrowMalloc(szBaseMemSize);//请求内存
+
+		//分割
+		bArrMemBlockBitmap = (bool *)AlignedMem(pBaseMem);
+		pArrMemBlockStack = (void **)((uintptr_t)bArrMemBlockBitmap + szBitMapAlignedSize);
+		pMemPool = (void *)((uintptr_t)pArrMemBlockStack + szStackAlignedSize);
 	
 		//初始化内存位图、栈数组
 		FreeAllMemBlock();
@@ -168,7 +184,7 @@ public:
 		szMemBlockNum(_Move.szMemBlockNum),
 
 		bArrMemBlockBitmap(_Move.bArrMemBlockBitmap),
-		pArrFreeMemBlockStack(_Move.pArrFreeMemBlockStack),
+		pArrMemBlockStack(_Move.pArrMemBlockStack),
 		szStackTop(_Move.szStackTop)
 	{
 		//清理移动对象成员
@@ -179,7 +195,7 @@ public:
 		_Move.szMemBlockNum = 0;
 
 		_Move.bArrMemBlockBitmap = NULL;
-		_Move.pArrFreeMemBlockStack = NULL;
+		_Move.pArrMemBlockStack = NULL;
 		_Move.szStackTop = 0;
 	}
 
@@ -187,13 +203,16 @@ public:
 	{
 		szMemBlockFixSize = 0;
 
-		free(pMemPool), pMemPool = NULL;
+		bArrMemBlockBitmap = NULL;
+		pArrMemBlockStack = NULL;
+		szStackTop = 0;
+
+		pMemPool = NULL;
 		szPoolSize = 0;
 		szMemBlockNum = 0;
 
-		free(bArrMemBlockBitmap), bArrMemBlockBitmap = NULL;
-		free(pArrFreeMemBlockStack), pArrFreeMemBlockStack = NULL;
-		szStackTop = 0;
+		fFree(pBaseMem), pBaseMem = NULL;
+		szBaseMemSize = 0;
 	}
 
 	type *AllocMemBlock(void) noexcept
@@ -204,7 +223,7 @@ public:
 		}
 
 		//从栈中弹出一个空闲内存块
-		void *pFreeMemBlock = pArrFreeMemBlockStack[szStackTop];
+		void *pFreeMemBlock = pArrMemBlockStack[szStackTop];
 		//移动栈顶出栈
 		++szStackTop;
 
@@ -212,14 +231,14 @@ public:
 		if constexpr (bLazyInit == true)
 		{
 			//如果是则需要检查下一个栈数据是否被初始化过，不是的话要进行初始化
-			if (pArrFreeMemBlockStack[szStackTop] == NULL)//使用了（不为NULL）的哨兵值，此处无需再检查szStackTop < szMemBlockNum
+			if (pArrMemBlockStack[szStackTop] == NULL)//使用了（不为NULL）的哨兵值，此处无需再检查szStackTop < szMemBlockNum
 			{
-				pArrFreeMemBlockStack[szStackTop] = (char *)pFreeMemBlock + szMemBlockFixSize;
+				pArrMemBlockStack[szStackTop] = (void *)((uintptr_t)pFreeMemBlock + szMemBlockFixSize);
 			}
 		}
 
 		//从内存块地址映射到位图
-		size_t szBitmapIndex = ((char *)pFreeMemBlock - (char *)pMemPool) / szMemBlockFixSize;
+		size_t szBitmapIndex = ((uintptr_t)pFreeMemBlock - (uintptr_t)pMemPool) / szMemBlockFixSize;
 		//设置为分配状态
 		bArrMemBlockBitmap[szBitmapIndex] = true;
 
@@ -234,13 +253,13 @@ public:
 		}
 
 		if (CmpPointAndPool(pAllocMemBlock) != 0 ||//超出内存池范围
-			((char *)pAllocMemBlock - (char *)pMemPool) % szMemBlockFixSize != 0)//不在定长内存块边界上
+			((uintptr_t)pAllocMemBlock - (uintptr_t)pMemPool) % szMemBlockFixSize != 0)//不在定长内存块边界上
 		{
 			return false;
 		}
 
 		//计算映射
-		size_t szBitmapIndex = ((char *)pAllocMemBlock - (char *)pMemPool) / szMemBlockFixSize;
+		size_t szBitmapIndex = ((uintptr_t)pAllocMemBlock - (uintptr_t)pMemPool) / szMemBlockFixSize;
 
 		//内存已经是释放状态（多次重复释放）
 		if (bArrMemBlockBitmap[szBitmapIndex] == false)
@@ -253,7 +272,7 @@ public:
 		//移动栈顶入栈
 		--szStackTop;
 		//将释放的内存块压入栈中
-		pArrFreeMemBlockStack[szStackTop] = pAllocMemBlock;
+		pArrMemBlockStack[szStackTop] = pAllocMemBlock;
 
 		return true;
 	}
@@ -270,10 +289,10 @@ public:
 		if constexpr (bLazyInit == true)
 		{
 			//懒惰初始化
-			pArrFreeMemBlockStack[szStackTop] = pMemPool;//设置起始地址，剩下的全0
-			memset(&pArrFreeMemBlockStack[szStackTop + 1], NULL, szMemBlockNum * sizeof(void *));//把中间都设置成NULL
-			pArrFreeMemBlockStack[szMemBlockNum] = SENTINEL_POINTER;//设置尾部为一个非NULL的非法地址（实际上并不会被分配出去，仅用于做哨兵标记）
-			//注意：这种情况下pArrFreeMemBlockStack[szMemBlockNum]并不会超尾访问
+			pArrMemBlockStack[szStackTop] = pMemPool;//设置起始地址，剩下的全0
+			memset(&pArrMemBlockStack[szStackTop + 1], NULL, szMemBlockNum * sizeof(void *));//把中间都设置成NULL
+			pArrMemBlockStack[szMemBlockNum] = SENTINEL_POINTER;//设置尾部为一个非NULL的非法地址（实际上并不会被分配出去，仅用于做哨兵标记）
+			//注意：这种情况下pArrMemBlockStack[szMemBlockNum]并不会超尾访问，因为初始化分配内存时会加上bLazyInit
 		}
 		else
 		{
@@ -281,8 +300,8 @@ public:
 			void *pMemBlockAddr = pMemPool;
 			for (size_t i = 0; i < szMemBlockNum; ++i)
 			{
-				pArrFreeMemBlockStack[i] = pMemBlockAddr;
-				pMemBlockAddr = (char *)pMemBlockAddr + szMemBlockFixSize;
+				pArrMemBlockStack[i] = pMemBlockAddr;
+				pMemBlockAddr = (void *)((uintptr_t)pMemBlockAddr + szMemBlockFixSize);
 			}
 		}
 	}
@@ -293,7 +312,7 @@ public:
 		{
 			return -1;
 		}
-		else if (p >= (char *)pMemPool + szPoolSize)
+		else if (p >= (void *)((uintptr_t)pMemPool + szPoolSize))
 		{
 			return 1;
 		}
