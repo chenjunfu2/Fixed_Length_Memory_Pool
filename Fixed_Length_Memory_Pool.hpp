@@ -57,6 +57,8 @@ struct default_free
 	}
 };
 
+#define SENTINEL_POINTER ((void *)(NULL + 1))//哨兵指针
+
 template <typename Type, bool bLazyInit = false, size_t szAlignment = 4, typename Alloc_func = default_alloc, typename Free_func = default_free>//分配时的返回类型、懒惰初始化策略（此策略会修改代码段，所以使用模板 & constexpr if）
 class FixLen_MemPool
 {
@@ -255,13 +257,11 @@ public:
 		//设置栈数据
 		if constexpr (bLazyInit == true)
 		{
-#define SENTINEL_POINTER ((void *)(NULL + 1))//哨兵指针
 			//懒惰初始化
 			pArrMemBlockStack[szStackTop] = pMemPool;//设置起始地址，剩下的全0
 			memset(&pArrMemBlockStack[szStackTop + 1], NULL, szMemBlockNum * sizeof(*pArrMemBlockStack));//把中间都设置成NULL
 			pArrMemBlockStack[szMemBlockNum] = SENTINEL_POINTER;//设置尾部为一个非NULL的非法地址（实际上并不会被分配出去，仅用于做哨兵标记）
 			//注意：这种情况下pArrMemBlockStack[szMemBlockNum]并不会超尾访问，因为初始化分配内存时会加上bLazyInit
-#undef SENTINEL_POINTER
 		}
 		else
 		{
@@ -306,3 +306,5 @@ public:
 		return szStackTop;
 	}
 };
+
+#undef SENTINEL_POINTER
