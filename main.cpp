@@ -20,7 +20,7 @@
 void *pArr[BLOCK_NUM];
 
 //–‘ƒ‹≤‚ ‘
-int main(void)
+int mainc(void)
 {
 	printf("info:\n    block size=%ldByte\n     block num=%ld\n      mem size=%.4lfMB\n", BLOCK_SIZE, BLOCK_NUM, (long double)BLOCK_SIZE * (long double)BLOCK_NUM / (long double)1024 / (long double)1024);
 	clock_t start, alloc, end;
