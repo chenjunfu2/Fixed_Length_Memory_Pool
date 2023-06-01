@@ -303,7 +303,7 @@ public:
 		{
 			//懒惰初始化
 			pArrMemBlockStack[szStackTop] = pMemPool;//设置起始地址，剩下的全0
-			memset(&pArrMemBlockStack[szStackTop + 1], NULL, szMemBlockNum * sizeof(void *));//把中间都设置成NULL
+			memset(&pArrMemBlockStack[szStackTop + 1], NULL, szMemBlockNum * sizeof(*pArrMemBlockStack));//把中间都设置成NULL
 			pArrMemBlockStack[szMemBlockNum] = SENTINEL_POINTER;//设置尾部为一个非NULL的非法地址（实际上并不会被分配出去，仅用于做哨兵标记）
 			//注意：这种情况下pArrMemBlockStack[szMemBlockNum]并不会超尾访问，因为初始化分配内存时会加上bLazyInit
 		}
