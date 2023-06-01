@@ -108,7 +108,7 @@ struct default_free
 	}
 };
 
-template <typename type, bool bLazyInit = true, size_t szAlignment = 4, typename alloc_func = default_alloc, typename free_func = default_free>//分配时的返回类型、懒惰初始化策略（此策略会修改代码段，所以使用模板 & constexpr if）
+template <typename Type, bool bLazyInit = true, size_t szAlignment = 4, typename Alloc_func = default_alloc, typename Free_func = default_free>//分配时的返回类型、懒惰初始化策略（此策略会修改代码段，所以使用模板 & constexpr if）
 class FixLen_MemPool
 {
 	static_assert(szAlignment == 1 || (szAlignment != 0 && szAlignment % 2 == 0));
@@ -129,7 +129,7 @@ private:
 protected:
 	void *ThrowMalloc(size_t szMemSize)
 	{
-		alloc_func fAlloc;
+		Alloc_func fAlloc;
 		void *p = fAlloc(szMemSize);
 		if (p == NULL)
 		{
@@ -140,7 +140,7 @@ protected:
 
 	void NoThrowFree(void *pMem)
 	{
-		free_func fFree;
+		Free_func fFree;
 		fFree(pMem);
 	}
 
@@ -159,7 +159,9 @@ protected:
 		return pMemPool;
 	}
 public:
-	FixLen_MemPool(size_t _szMemBlockFixSize = sizeof(type), size_t _szMemBlockPreAllocNum = 1024) :
+	using RetPoint_Type = Type;
+
+	FixLen_MemPool(size_t _szMemBlockFixSize = sizeof(Type), size_t _szMemBlockPreAllocNum = 1024) :
 		szMemBlockFixSize(_szMemBlockFixSize),
 		szMemBlockNum(_szMemBlockPreAllocNum)
 	{
@@ -228,7 +230,7 @@ public:
 		//szBaseMemSize = 0;
 	}
 
-	type *AllocMemBlock(void) noexcept
+	Type *AllocMemBlock(void) noexcept
 	{
 		if (szStackTop >= szMemBlockNum)//没有空闲内存块了
 		{
@@ -255,10 +257,10 @@ public:
 		//设置为分配状态
 		bArrMemBlockBitmap[szBitmapIndex] = true;
 
-		return (type *)pFreeMemBlock;
+		return (Type *)pFreeMemBlock;
 	}
 
-	bool FreeMemBlock(type *pAllocMemBlock) noexcept//释放非内存池分配的内存、多次释放会返回false
+	bool FreeMemBlock(Type *pAllocMemBlock) noexcept//释放非内存池分配的内存、多次释放会返回false
 	{
 		if (pAllocMemBlock == NULL)//空指针
 		{
