@@ -83,9 +83,10 @@ size_t fixed_length：用户初始化时确定的长度
 释放：O(1)
 */
 
-#include <malloc.h>
+//#include <malloc.h>
+#include <new>
 #include <string.h>
-#include <algorithm>
+
 
 #define SENTINEL_POINTER ((void *)(NULL + 1))//哨兵指针
 
@@ -93,7 +94,8 @@ struct default_alloc
 {
 	void *operator()(size_t szMemSize)
 	{
-		return malloc(szMemSize);
+		//return malloc(szMemSize);
+		return new char[szMemSize];
 	}
 };
 
@@ -101,7 +103,8 @@ struct default_free
 {
 	void operator()(void *pMem)
 	{
-		return free(pMem);
+		//return free(pMem);
+		return delete (char *)pMem;
 	}
 };
 
@@ -120,21 +123,25 @@ private:
 	size_t szPoolSize = 0;//内存池大小（size：字节数）
 	size_t szMemBlockNum = 0;//内存池中总内存块个数
 
-	void *pBaseMem = NULL;//内存基地址
-	size_t szBaseMemSize = 0;//总内存大小
+	void *pBaseMem = NULL;//内存基地址(用于后续释放)
+	//size_t szBaseMemSize = 0;//总内存大小
 
-	//用户自定义函数
-	alloc_func fAlloc;
-	free_func fFree;
 protected:
 	void *ThrowMalloc(size_t szMemSize)
 	{
+		alloc_func fAlloc;
 		void *p = fAlloc(szMemSize);
 		if (p == NULL)
 		{
 			throw std::bad_alloc();
 		}
 		return p;
+	}
+
+	void NoThrowFree(void *pMem)
+	{
+		free_func fFree;
+		fFree(pMem);
 	}
 
 	size_t AlignedSize(size_t szSize)
@@ -162,7 +169,7 @@ public:
 		szPoolSize = szMemBlockNum * szMemBlockFixSize;//此处内存池后无后继结构，无需对齐
 
 		//一次性分配
-		szBaseMemSize = szBitMapAlignedSize + szStackAlignedSize + szPoolSize + szAlignment - 1;//计算总所需内存
+		size_t szBaseMemSize = szBitMapAlignedSize + szStackAlignedSize + szPoolSize + szAlignment - 1;//计算总所需内存
 		pBaseMem = ThrowMalloc(szBaseMemSize);//请求内存
 
 		//分割
@@ -179,24 +186,30 @@ public:
 	FixLen_MemPool(FixLen_MemPool &&_Move) noexcept ://移动构造
 		szMemBlockFixSize(_Move.szMemBlockFixSize),
 
+		bArrMemBlockBitmap(_Move.bArrMemBlockBitmap),
+		pArrMemBlockStack(_Move.pArrMemBlockStack),
+		szStackTop(_Move.szStackTop),
+
 		pMemPool(_Move.pMemPool),
 		szPoolSize(_Move.szPoolSize),
 		szMemBlockNum(_Move.szMemBlockNum),
-
-		bArrMemBlockBitmap(_Move.bArrMemBlockBitmap),
-		pArrMemBlockStack(_Move.pArrMemBlockStack),
-		szStackTop(_Move.szStackTop)
+		
+		pBaseMem(_Move.pBaseMem)//,
+		//szBaseMemSize(_Move.szBaseMemSize)
 	{
 		//清理移动对象成员
 		_Move.szMemBlockFixSize = 0;
 		
+		_Move.bArrMemBlockBitmap = NULL;
+		_Move.pArrMemBlockStack = NULL;
+		_Move.szStackTop = 0;
+
 		_Move.pMemPool = NULL;
 		_Move.szPoolSize = 0;
 		_Move.szMemBlockNum = 0;
 
-		_Move.bArrMemBlockBitmap = NULL;
-		_Move.pArrMemBlockStack = NULL;
-		_Move.szStackTop = 0;
+		_Move.pBaseMem = NULL;
+		//_Move.szBaseMemSize = 0;
 	}
 
 	~FixLen_MemPool(void) noexcept
@@ -210,9 +223,9 @@ public:
 		pMemPool = NULL;
 		szPoolSize = 0;
 		szMemBlockNum = 0;
-
-		fFree(pBaseMem), pBaseMem = NULL;
-		szBaseMemSize = 0;
+		
+		NoThrowFree(pBaseMem), pBaseMem = NULL;
+		//szBaseMemSize = 0;
 	}
 
 	type *AllocMemBlock(void) noexcept
@@ -325,11 +338,6 @@ public:
 	size_t GetMemBlockFixSize(void) const
 	{
 		return szMemBlockFixSize;
-	}
-
-	size_t GetPoolSize(void) const
-	{
-		return szPoolSize;
 	}
 
 	size_t GetMemBlockNum(void) const
