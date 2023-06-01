@@ -1,4 +1,5 @@
 #include "Fixed_Length_Memory_Pool.hpp"
+#include "Automatic_Expand_Fixed_Length_Memory_Pool.hpp"
 
 #include <stdio.h>
 #include <stdlib.h>

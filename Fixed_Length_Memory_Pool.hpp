@@ -108,7 +108,7 @@ struct default_free
 	}
 };
 
-template <typename Type, bool bLazyInit = true, size_t szAlignment = 4, typename Alloc_func = default_alloc, typename Free_func = default_free>//分配时的返回类型、懒惰初始化策略（此策略会修改代码段，所以使用模板 & constexpr if）
+template <typename Type, bool bLazyInit = false, size_t szAlignment = 4, typename Alloc_func = default_alloc, typename Free_func = default_free>//分配时的返回类型、懒惰初始化策略（此策略会修改代码段，所以使用模板 & constexpr if）
 class FixLen_MemPool
 {
 	static_assert(szAlignment == 1 || (szAlignment != 0 && szAlignment % 2 == 0));
@@ -160,6 +160,8 @@ protected:
 	}
 public:
 	using RetPoint_Type = Type;
+	static constexpr size_t szLazyInitExtraRequireSize = bLazyInit * sizeof(*pArrMemBlockStack);//懒惰初始化所需的额外内存
+	static constexpr size_t szManageMemBlockRequireSize = sizeof(*bArrMemBlockBitmap) + sizeof(*pArrMemBlockStack);//管理一个内存块所需的管理内存大小
 
 	FixLen_MemPool(size_t _szMemBlockFixSize = sizeof(Type), size_t _szMemBlockPreAllocNum = 1024) :
 		szMemBlockFixSize(_szMemBlockFixSize),
