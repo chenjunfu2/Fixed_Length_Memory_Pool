@@ -23,7 +23,7 @@ int mainw(void)
 		}
 
 		szCurrent += Temp;
-		szBlock += szBlock * 2;//倍增
+		szBlock *= 2;//倍增
 		printf("i:%02zu Cur:%zu\n", i, szCurrent);
 	}
 
@@ -91,7 +91,7 @@ private:
 	}
 
 public:
-	AutoExpand_FixLen_MemPool(size_t _szMemBlockFixSize = sizeof(Type), size_t _szMemBlockPreAllocNum = 1024) :
+	AutoExpand_FixLen_MemPool(size_t _szMemBlockFixSize = sizeof(Type), size_t _szMemBlockPreAllocNum = 1024) ://把_szMemBlockPreAllocNum向上舍入到最近的2的指数次方
 		szMemBlockFixSize(_szMemBlockFixSize),
 		szMemBlockNum(_szMemBlockPreAllocNum)
 	{
@@ -148,8 +148,8 @@ public:
 			pstArrFreePool[szFreePoolEnd]->szFreePoolIdx = szFreePoolEnd;
 			--szFreePoolEnd;
 			//新建内存池
-			pstArrFreePool[szFreePoolBeg] = ConstructorNode(szMemBlockFixSize, szMemBlockNum * szExpandMultiple, szFreePoolBeg);
-			szMemBlockNum += szMemBlockNum * szExpandMultiple;
+			pstArrFreePool[szFreePoolBeg] = ConstructorNode(szMemBlockFixSize, szMemBlockNum, szFreePoolBeg);
+			szMemBlockNum *= szExpandMultiple;
 
 
 

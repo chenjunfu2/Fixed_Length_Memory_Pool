@@ -1,5 +1,5 @@
 #include "Fixed_Length_Memory_Pool.hpp"
-#include "Automatic_Expand_Fixed_Length_Memory_Pool.hpp"
+//#include "Automatic_Expand_Fixed_Length_Memory_Pool.hpp"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -188,6 +188,61 @@ int maing(void)
 			printf("\n");
 		}
 	}
+
+	return 0;
+}
+
+
+#define MY
+
+#ifdef MY//41.1290s
+#define INIT(s,n)	FixLen_MemPool<void, false> a(s, n)
+#define ALLOC(s)	a.AllocMemBlock()
+#define FREE(p)		a.FreeMemBlock(p)
+#elif defined NEW//130.0980s
+#define INIT(s,n)	//do nothing
+#define ALLOC(s)	new char[s]
+#define FREE(p)		delete[](char*)p
+#elif defined MALLOC//
+#define INIT(s,n)	//do nothing
+#define ALLOC(s)	malloc(s)
+#define FREE(p)		free(p)
+#endif // MY
+
+
+
+//性能测试
+int main(void)
+{
+	clock_t start, end;
+
+	//初始化随机种子（生成固定伪随机数序列）
+	srand(1);
+
+	start = clock();
+	{
+		INIT(BLOCK_SIZE, BLOCK_NUM);
+		//先全部请求完
+		//一共执行16次
+		for (int j = 0; j < 16; ++j)
+		{
+			for (int i = 0; i < BLOCK_NUM; ++i)
+			{
+				pArr[i] = ALLOC(BLOCK_SIZE);
+			}
+			for (int i = BLOCK_NUM - 1; i >= 0; --i)
+			{
+				int f = rand() % (i + 1);//挑选一个随机幸运元素释放
+				//挑选到的元素与末尾交换
+				std::swap(pArr[f], pArr[i]);
+				//释放末尾元素
+				FREE(pArr[i]);
+			}
+		}
+	}
+	end = clock();
+	clock_t my = end - start;
+	printf("time:\n    %.4lfs\n\n", CLOCKTOSEC(start, end));
 
 	return 0;
 }
