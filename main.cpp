@@ -17,6 +17,7 @@
 
 #define CLOCKTOSEC(start,end) ((long double)((end) - (start)) / (long double)CLOCKS_PER_SEC)
 
+
 void *pArr[BLOCK_NUM];
 
 //性能测试
@@ -193,56 +194,130 @@ int maing(void)
 }
 
 
-#define MY
+#define MALLOC
+using my = FixLen_MemPool<void, false>;
 
-#ifdef MY//41.1290s
-#define INIT(s,n)	FixLen_MemPool<void, false> a(s, n)
+#ifdef MY
+#define INIT(s,n)	my a(s, n)
 #define ALLOC(s)	a.AllocMemBlock()
 #define FREE(p)		a.FreeMemBlock(p)
-#elif defined NEW//130.0980s
+#define UNIN()		a.~my();
+/*
+time:
+	 init :0.1070s
+	 alloc:0.4440s
+	 freem:0.5630s
+	 unin :0.0250s
+	 all  :1.1390s
+*/
+#elif defined NEW
 #define INIT(s,n)	//do nothing
 #define ALLOC(s)	new char[s]
 #define FREE(p)		delete[](char*)p
+#define UNIN()		//do nothing
+/*
+time:
+	 init :0.0000s
+	 alloc:2.3530s
+	 freem:2.5900s
+	 unin :0.0000s
+	 all  :4.9430s
+*/
 #elif defined MALLOC//
 #define INIT(s,n)	//do nothing
 #define ALLOC(s)	malloc(s)
 #define FREE(p)		free(p)
+#define UNIN()		//do nothing
+/*
+time:
+	 init :0.0000s
+	 alloc:2.6430s
+	 freem:3.2420s
+	 unin :0.0000s
+	 all  :5.8850s
+*/
 #endif // MY
 
-
+#undef CLOCKTOSEC
+#define CLOCKTOSEC(val) (((long double)(val)) / (long double)CLOCKS_PER_SEC)
 
 //性能测试
 int main(void)
 {
-	clock_t start, end;
+	clock_t init, alloc, freem, unin, all;
 
-	//初始化随机种子（生成固定伪随机数序列）
-	srand(1);
-
-	start = clock();
 	{
+		init = clock();
 		INIT(BLOCK_SIZE, BLOCK_NUM);
+		init = clock() - init;
+
+		printf("init:ok\n\n");
+
 		//先全部请求完
 		//一共执行16次
 		for (int j = 0; j < 16; ++j)
 		{
+			printf("for:%d\n", j);
+			//初始化随机种子（生成固定伪随机数序列）
+			srand(j);
+			printf("  srand:ok\n");
+
+			alloc = clock();
 			for (int i = 0; i < BLOCK_NUM; ++i)
 			{
 				pArr[i] = ALLOC(BLOCK_SIZE);
 			}
+			alloc = clock() - alloc;
+
+			printf("  alloc:ok\n");
+
 			for (int i = BLOCK_NUM - 1; i >= 0; --i)
 			{
 				int f = rand() % (i + 1);//挑选一个随机幸运元素释放
 				//挑选到的元素与末尾交换
 				std::swap(pArr[f], pArr[i]);
+			}
+
+			printf("  rand:ok\n");
+
+			freem = clock();
+			for (int i = 0; i < BLOCK_NUM; ++i)
+			{
 				//释放末尾元素
 				FREE(pArr[i]);
 			}
+			freem = clock() - freem;
+
+			printf("  free:ok\n");
 		}
+
+		unin = clock();
+		UNIN();
+		unin = clock() - unin;
+
+		printf("unin:ok\n\n");
 	}
-	end = clock();
-	clock_t my = end - start;
-	printf("time:\n    %.4lfs\n\n", CLOCKTOSEC(start, end));
+	
+#ifdef MY
+	all = init + alloc + freem + unin;
+#else
+	all = alloc + freem;
+#endif // MY
+
+
+	printf(
+		"time:\n"\
+		"     init :%.4lfs\n"\
+		"     alloc:%.4lfs\n"\
+		"     freem:%.4lfs\n"\
+		"     unin :%.4lfs\n"\
+		"     all  :%.4lfs\n",
+		CLOCKTOSEC(init),
+		CLOCKTOSEC(alloc),
+		CLOCKTOSEC(freem),
+		CLOCKTOSEC(unin),
+		CLOCKTOSEC(all)
+	);
 
 	return 0;
 }
