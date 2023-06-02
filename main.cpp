@@ -21,7 +21,7 @@
 void *pArr[BLOCK_NUM];
 
 //性能测试
-int mainc(void)
+int main(void)
 {
 	printf("info:\n    block size=%ldByte\n     block num=%ld\n      mem size=%.4lfMB\n", BLOCK_SIZE, BLOCK_NUM, (long double)BLOCK_SIZE * (long double)BLOCK_NUM / (long double)1024 / (long double)1024);
 	clock_t start, alloc, end;
@@ -140,7 +140,7 @@ int maing(void)
 		v.push_back(a.AllocMemBlock());
 		//printf("%d alloc:0x%p\n", i, v.back());
 	}
-	a.FreeAllMemBlock();//全部释放
+	a.Reset();//全部释放
 
 	//随机释放+分配
 	srand(2);
@@ -194,7 +194,7 @@ int maing(void)
 }
 
 
-#define MALLOC
+#define MY
 using my = FixLen_MemPool<void, false>;
 
 #ifdef MY
@@ -242,7 +242,7 @@ time:
 #define CLOCKTOSEC(val) (((long double)(val)) / (long double)CLOCKS_PER_SEC)
 
 //性能测试
-int main(void)
+int mainj(void)
 {
 	clock_t init, alloc, freem, unin, all;
 

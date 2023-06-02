@@ -3,73 +3,108 @@
 
 //链表扩容法、树扩容法
 
+/*
+封装FixLen_MemPool类，并自动扩容申请新的类实例
+类内有两个数组，一个是空闲内存池，另一个是排序内存池
 
-int mainw(void)
-{
-	size_t szBlock = 1;
-	size_t szFixSize = 1;
-	size_t szManage = 9;
+分配：
+每次分配都从空闲内存池索引szArrBeg处的内存池请求内存，如果请求失败则与--szArrLastSwap处的空闲内存池交换
+也就是说，从szArrLastSwap到szArrEnd之间全部是已满的内存池，从szArrBeg到szArrLastSwap之间全部都是未满的内存池，szArrLastSwap相当于数组的分隔符
 
-	size_t i = 0;
-	size_t szCurrent = 0;
-	size_t Temp;
+在交换过程中，要先检测szArrLastSwap是否<=1，如果是则代表已无可用内存池了，这时候就需要按照szExpandMultiple倍增扩容，分配一个新的内存池
+如果还有可用内存池，则交换数组中这两个Node元素的指针并给他们的szArrIdx修改为当前它所在的数组位置的索引
 
-	for (i = 0; i < 64; ++i)
-	{
-		Temp = (szManage + szBlock) * szFixSize;
-		if (Temp > SIZE_MAX - szCurrent)
-		{
-			break;
-		}
+分配新内存池时，新内存池的block数为：当前所有内存池block总和*szExpandMultiple-当前所有内存池block总和，也就是当前所有内存池block总和扩容szExpandMultiple倍后增加的block数
+如果szArrEnd不等于数组的静态声明大小，则新建的内存池放在szArrBeg处，原先szArrBeg处的Node调到szArrEnd，并++szArrEnd，设置这两个Node里所在数组的索引然后利用二分法通过内存池起始地址
+在pNodeArrSortPool找到适当的位置进行插入排序，后面的元素全部使用memmove往后移动
 
-		szCurrent += Temp;
-		szBlock *= 2;//倍增
-		printf("i:%02zu Cur:%zu\n", i, szCurrent);
-	}
+释放：
+检查当前释放指针是不是nullptr，是就直接返回true
 
-	printf("\nTmp:%zu\n", Temp);
+不是nullptr，使释放指针用二分法查找在pNodeArrSortPool中，因为pNodeArrSortPool是根据内存池地址排序的，所以可以快速找到指针所属内存池，但是因为内存池地址是起始地址，指针可以在起始地址
+到结束地址之间，所以二分法并不一定是精确查找到完美匹配的方案（也存在刚好匹配，比如内存池起始地址的那个block刚好正在释放），所以只要二分查找中的beg和end相差小等于1或者刚好匹配，
+则代表当前释放指针在beg索引所指的内存池中（因为大于beg的地址，但是小于end的地址，又因为内存池按照内存池的起始地址排序（注意不是内存池类的地址，是类内池之的地址），所以可以推出这个指针所属beg索引所指的内存池）
+然后调用这个内存池的释放函数释放该指针
 
-	return 0;
-}
+在释放完成后，如果释放函数返回false，则返回false
 
-#define PNODE_ARR_MAX_SIZE 42
+不是false，则通过这个索引得到的Node结构中的szArrIdx获得该池在pNodeArrFreePool中的位置，并判断szArrLastSwap和自身位置的关系，如果是szArrLastSwap>szArrIdx，则该池已在空闲区域内，无需调换直接返回true
+否则将自己和szArrLastSwap索引的指针交换，并设置szArrIdx，然后++szArrLastSwap，确保自己被换入空闲区域
+
+*/
+
+
+#define PNODE_ARR_MAX_SIZE ArrMaxNum()
 
 template <typename Pool_class, bool bAutoDelUnuse = false, size_t szExpandMultiple = 2, typename Alloc_func = default_alloc, typename Free_func = default_free>
 class AutoExpand_FixLen_MemPool
 {
 	static_assert(szExpandMultiple >= 2);
-private:
+protected:
+	static constexpr size_t ArrMaxNum(void)//大致估计（编译时计算）
+	{
+		size_t szBlockNum = 1;//内存块总数
+		size_t szCumulative = 0;//总大小
+
+		size_t szNum = 0;
+		while (szNum < 512)
+		{
+			//计算当前总大小
+			szCumulative = Pool_class::szManageMemBlockRequireSize * szBlockNum;
+			if (szCumulative / szBlockNum != Pool_class::szManageMemBlockRequireSize)//溢出
+			{
+				break;
+			}
+			
+			szCumulative += szBlockNum;
+			if (szCumulative < szBlockNum)//溢出
+			{
+				break;
+			}
+			
+			szCumulative += sizeof(Pool_class) * szNum;
+			if (szCumulative < sizeof(Pool_class) * szNum)//溢出
+			{
+				break;
+			}
+
+			szBlockNum *= szExpandMultiple;//倍增
+			++szNum;
+		}
+
+		//数组大小为szNum
+		return szNum;
+	}
+
 	using Type = Pool_class::RetPoint_Type;
 	struct Node
 	{
 		Pool_class csMemPool;
-		size_t szFreePoolIdx;//这个结构在空闲池数组中的索引
+		size_t szArrIdx;//这个结构在空闲池数组中的索引
 	};
+
+private:
+	Node* pNodeArrFreePool[PNODE_ARR_MAX_SIZE];//空闲内存池
+	Node* pNodeArrSortPool[PNODE_ARR_MAX_SIZE];//排序内存池
+
+	static constexpr size_t szArrBeg = 0;//头部索引
+	size_t szArrEnd = 0;//尾后索引
+	size_t szArrLastSwap = 0;//上一次交换的索引
 
 	FixLen_MemPool<Node, false, 4, Alloc_func, Free_func> csMemPool = (sizeof(Node), PNODE_ARR_MAX_SIZE);//用一个内存池来管理后续的内部分配释放
 
-	Node* pstArrFreePool[PNODE_ARR_MAX_SIZE];//空闲内存池
-	Node* pstArrSortPool[PNODE_ARR_MAX_SIZE];//排序内存池
-
-	static constexpr size_t szFreePoolBeg = 0;//头部索引
-	static constexpr size_t szSortPoolBeg = 0;//头部索引
-	size_t szFreePoolEnd = 0;//尾后索引
-	size_t szSortPoolEnd = 0;//尾后索引
-	size_t szFreePoolLastSwap = 0;//上一次交换的索引
-
 	size_t szMemBlockFixSize = 0;//用户初始化时需要的定长内存长度（size：字节数）
-
 	size_t szMemBlockNum = 0;//内存池中总内存块个数
 	size_t szMemBlockUse = 0;//内存池中使用内存块个数
 private:
-	Node *ConstructorNode(size_t _szMemBlockFixSize, size_t _szMemBlockPreAllocNum, size_t _szFreePoolIdx)
+	Node *ConstructorNode(size_t _szMemBlockFixSize, size_t _szMemBlockPreAllocNum, size_t _szArrIdx)
 	{
 		Node *pNode = csMemPool.AllocMemBlock();//请求内存
 
 		//构造类
 		new(&pNode->csMemPool) Pool_class(_szMemBlockFixSize, _szMemBlockPreAllocNum);//placement new
 		//初始化索引
-		pNode->szFreePoolIdx = _szFreePoolIdx;
+		pNode->szArrIdx = _szArrIdx;
 
 		return pNode;
 	}
@@ -78,16 +113,16 @@ private:
 	{
 		//确保正确析构
 		pNode->csMemPool.~Pool_class();
-		pNode->szFreePoolIdx = szFreePoolBeg;
+		pNode->szArrIdx = szArrBeg;
 
 		csMemPool.FreeMemBlock(pNode);//回收内存
 	}
 
 	void SwapFreePool(size_t szLeftIdx,size_t szRightIdx)//交换两个空闲内存池
 	{
-		std::swap(pstArrFreePool[szLeftIdx], pstArrFreePool[szRightIdx]);
-		pstArrFreePool[szLeftIdx]->szFreePoolIdx = szLeftIdx;
-		pstArrFreePool[szRightIdx]->szFreePoolIdx = szRightIdx;
+		std::swap(pNodeArrFreePool[szLeftIdx], pNodeArrFreePool[szRightIdx]);
+		pNodeArrFreePool[szLeftIdx]->szArrIdx = szLeftIdx;
+		pNodeArrFreePool[szRightIdx]->szArrIdx = szRightIdx;
 	}
 
 public:
@@ -95,22 +130,22 @@ public:
 		szMemBlockFixSize(_szMemBlockFixSize),
 		szMemBlockNum(_szMemBlockPreAllocNum)
 	{
-		Node *pNewNode = ConstructorNode(szMemBlockFixSize, szMemBlockNum, szFreePoolEnd);
+		Node *pNewNode = ConstructorNode(szMemBlockFixSize, szMemBlockNum, szArrEnd);
 
-		pstArrFreePool[szFreePoolEnd] = pNewNode;
-		pstArrSortPool[szSortPoolEnd] = pNewNode;
+		pNodeArrFreePool[szArrEnd] = pNewNode;
+		pNodeArrSortPool[szArrEnd] = pNewNode;
 
-		++szFreePoolEnd;
-		++szSortPoolEnd;
+		++szArrEnd;
+		++szArrEnd;
 
-		szFreePoolLastSwap = szFreePoolEnd;
+		szArrLastSwap = szArrEnd;
 	}
 
 	AutoExpand_FixLen_MemPool(const AutoExpand_FixLen_MemPool &) = delete;//禁用类拷贝构造
 
 	AutoExpand_FixLen_MemPool(AutoExpand_FixLen_MemPool &&_Move) noexcept//移动构造
 	{
-
+		
 	}
 
 	~AutoExpand_FixLen_MemPool(void)
@@ -122,33 +157,33 @@ public:
 	{
 		while (true)
 		{
-			Type *pFreeMemBlock = pstArrFreePool[szFreePoolBeg]->csMemPool.AllocMemBlock();
+			Type *pFreeMemBlock = pNodeArrFreePool[szArrBeg]->csMemPool.AllocMemBlock();
 			if (pFreeMemBlock != NULL)
 			{
 				return pFreeMemBlock;
 			}
 
 			//如果运行到此代表这个内存池空间已耗尽
-			if (szFreePoolLastSwap <= 1)//已经没有空闲内存池可供交换
+			if (szArrLastSwap <= 1)//已经没有空闲内存池可供交换
 			{
 				break;
 			}
 
 			//定位到下一个空闲内存池
-			--szFreePoolLastSwap;
+			--szArrLastSwap;
 			//交换
-			SwapFreePool(szFreePoolBeg, szFreePoolLastSwap);
+			SwapFreePool(szArrBeg, szArrLastSwap);
 		}
 
 		//运行到此则代表没有可用空闲内存池了，动态分配一个
-		if (szFreePoolEnd < PNODE_ARR_MAX_SIZE)//静态数组没满，还能分配
+		if (szArrEnd < PNODE_ARR_MAX_SIZE)//静态数组没满，还能分配
 		{
 			//把当前内存池调到尾部并直接覆盖
-			pstArrFreePool[szFreePoolEnd] = pstArrFreePool[szFreePoolBeg];
-			pstArrFreePool[szFreePoolEnd]->szFreePoolIdx = szFreePoolEnd;
-			--szFreePoolEnd;
+			pNodeArrFreePool[szArrEnd] = pNodeArrFreePool[szArrBeg];
+			pNodeArrFreePool[szArrEnd]->szArrIdx = szArrEnd;
+			--szArrEnd;
 			//新建内存池
-			pstArrFreePool[szFreePoolBeg] = ConstructorNode(szMemBlockFixSize, szMemBlockNum, szFreePoolBeg);
+			pNodeArrFreePool[szArrBeg] = ConstructorNode(szMemBlockFixSize, szMemBlockNum * szExpandMultiple - szMemBlockNum, szArrBeg);
 			szMemBlockNum *= szExpandMultiple;
 
 

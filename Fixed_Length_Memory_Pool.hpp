@@ -3,6 +3,13 @@
 用位图索引检查待释放内存地址和状态是否正确，用空闲内存栈节点索引内存位图
 也就是内存位图用于检查释放地址是否合法，栈用于存储待分配内存块
 
+实际上这个内存池就是通过减少对系统调用的次数来获得性能增益的
+这个内存池包括两个数据结构用于管理block的分配和释放，第一个是一个空闲block栈，分配的时候让栈顶的空闲block弹出分配给用户，回收的时候把用户返回的指针压入栈顶
+另一个是一个内存位图，用于验证释放过程中的用户传入的指针当前的状态是什么：已释放or未释放，防止用户多次释放同一个指针导致栈内存在多个重复数据甚至爆栈
+分配的时候从栈中弹出的内存块会同步计算内存块在内存位图中的映射，并设置成true已分配，而在释放过程中检查用户指针是否在内存池中、是否与内存块边界对齐后
+就会进行映射计算然后与内存位图中的bool值进行比对，只要这个值是true已分配，则代表用户释放的是一个正确的指针，那么就将内存位图的这个值设置成false并压入空闲栈
+
+实际上内存位图本质上就是用来做安全释放检测的，如果能100%信任用户，则完全无比使用做这个位图，一个栈，分配弹出、释放压入即可，然后啥时候用户一个不小心程序就炸了（不是
 
 数据成员：
 void* mem_pool：一个内存池，按照固定大小来分块
@@ -94,21 +101,6 @@ protected:
 	{
 		Free_func fFree;
 		fFree(pMem);
-	}
-
-	size_t AlignedSize(size_t szSize)
-	{
-		return (szSize + szAlignment - 1) & ~(szAlignment - 1);
-	}
-
-	void* AlignedMem(void* pMem)
-	{
-		return (void *)(((uintptr_t)pMem + szAlignment - 1) & ~(szAlignment - 1));
-	}
-
-	const void *GetMemPool(void) const
-	{
-		return pMemPool;
 	}
 public:
 	using RetPoint_Type = Type;
@@ -298,8 +290,8 @@ public:
 			}
 		}
 	}
-	
-	int CmpPointAndPool(const void *p) const//返回-1代表小于内存池基地址，返回0代表在内存池中，返回1代表大等于内存池尾部
+
+	long CmpPointAndPool(const void *p) const//返回-1代表小于内存池基地址，返回0代表在内存池中，返回1代表大等于内存池尾部
 	{
 		if (p < pMemPool)
 		{
@@ -328,6 +320,21 @@ public:
 	size_t GetMemBlockUse(void) const
 	{
 		return szStackTop;
+	}
+
+	uintptr_t GetMemPool(void) const
+	{
+		return (uintptr_t)pMemPool;
+	}
+
+	static size_t AlignedSize(size_t szSize)
+	{
+		return (szSize + szAlignment - 1) & ~(szAlignment - 1);
+	}
+
+	static void *AlignedMem(void *pMem)
+	{
+		return (void *)(((uintptr_t)pMem + szAlignment - 1) & ~(szAlignment - 1));
 	}
 };
 
