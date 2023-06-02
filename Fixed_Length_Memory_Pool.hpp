@@ -37,6 +37,7 @@ size_t fixed_length：用户初始化时确定的长度
 //#include <malloc.h>
 #include <new>
 #include <string.h>
+#include <utility>
 
 
 struct default_alloc
@@ -134,7 +135,7 @@ public:
 		pMemPool = (void *)((uintptr_t)pArrMemBlockStack + szStackAlignedSize);
 	
 		//初始化内存位图、栈数组
-		FreeAllMemBlock();
+		Reset();
 	}
 
 	FixLen_MemPool(const FixLen_MemPool &) = delete;//禁用类拷贝构造
@@ -246,7 +247,30 @@ public:
 		return true;
 	}
 
-	void FreeAllMemBlock(void) noexcept
+	//构造并返回对象地址
+	template<typename... Args>
+	Type *AllocMemBlockConstructor(Args&&... args) noexcept
+	{
+		Type *pFreeMemBlock = AllocMemBlock();
+		if (pFreeMemBlock == NULL)
+		{
+			return NULL;
+		}
+
+		//构造new
+		new(pFreeMemBlock) Type(std::forward<Args>(args)...);
+
+		return pFreeMemBlock;
+	}
+
+	//析构并回收对象地址
+	bool FreeMemBlockDestructor(Type *pAllocMemBlock) noexcept
+	{
+		pAllocMemBlock->~Type();
+		FreeMemBlock(pAllocMemBlock);
+	}
+
+	void Reset(void) noexcept
 	{
 		//设置位图为未分配
 		memset(bArrMemBlockBitmap, false, szMemBlockNum * sizeof(bool));
@@ -274,7 +298,7 @@ public:
 			}
 		}
 	}
-
+	
 	int CmpPointAndPool(const void *p) const//返回-1代表小于内存池基地址，返回0代表在内存池中，返回1代表大等于内存池尾部
 	{
 		if (p < pMemPool)
