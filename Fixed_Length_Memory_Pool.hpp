@@ -322,9 +322,9 @@ public:
 		return szStackTop;
 	}
 
-	uintptr_t GetMemPool(void) const
+	const void *GetMemPool(void) const
 	{
-		return (uintptr_t)pMemPool;
+		return pMemPool;
 	}
 
 	static size_t AlignedSize(size_t szSize)

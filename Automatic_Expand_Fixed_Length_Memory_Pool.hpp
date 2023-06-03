@@ -33,10 +33,7 @@
 
 */
 
-
-#define PNODE_ARR_MAX_SIZE ArrMaxNum()
-
-template <typename Pool_class, bool bAutoDelUnuse = false, size_t szExpandMultiple = 2, size_t szAlignment = 4, typename Alloc_func = default_alloc, typename Free_func = default_free>
+template <typename Pool_class, size_t szExpandMultiple = 2, size_t szAlignment = 4, typename Alloc_func = default_alloc, typename Free_func = default_free>
 class AutoExpand_FixLen_MemPool
 {
 	static_assert(szExpandMultiple >= 2);
@@ -76,6 +73,7 @@ protected:
 		return szNum;
 	}
 
+	static constexpr size_t PNODE_ARR_MAX_SIZE = ArrMaxNum();//61
 	using Type = Pool_class::RetPoint_Type;
 	struct Node
 	{
@@ -84,8 +82,8 @@ protected:
 	};
 
 private:
-	Node* pNodeArrFreePool[PNODE_ARR_MAX_SIZE];//空闲内存池
-	Node* pNodeArrSortPool[PNODE_ARR_MAX_SIZE];//排序内存池
+	Node* pNodeArrFreePool[PNODE_ARR_MAX_SIZE];//空闲内存池（szArrLastSwap索引左边，不包括其指代都为空闲内存池，右边，包括其指代都为已满内存池）
+	Node* pNodeArrSortPool[PNODE_ARR_MAX_SIZE];//排序内存池（按内存池地址排序Node，左低右高）
 
 	static constexpr size_t szArrBeg = 0;//头部索引
 	size_t szArrEnd = 0;//尾后索引
@@ -125,6 +123,34 @@ private:
 		pNodeArrFreePool[szRightIdx]->szArrIdx = szRightIdx;
 	}
 
+	size_t BinarySearchSortPool(const void* pFind)//使用uintptr_t在排序池列表中二分查找，返回第一个内存池基地址不大于pFind的排序池列表的索引（左低右高排序）
+	{
+		size_t szFindBeg = szArrBeg;
+		size_t szFindEnd = szArrEnd;
+		size_t szFindCur;
+
+		while (szFindEnd - szFindBeg > 1)//<=1时结束循环，此时pFind就在Beg到End中间
+		{
+			szFindCur = (szArrEnd - szArrBeg) / 2;//计算当前的中点
+
+			long lCmp = pNodeArrSortPool[szFindCur]->csMemPool.CmpPointAndPool(pFind);//比较目标指针和内存池地址
+			if (lCmp < 0)//小于
+			{
+				szFindEnd = szFindCur;//目标在左边，截断End
+			}
+			else if (lCmp > 0)//大于
+			{
+				szFindBeg = szFindCur;//目标在右边，截断Beg
+			}
+			else//等于
+			{
+				return szFindCur;//直接命中
+			}
+		}
+
+		return szFindBeg;//Beg恰好小于pFind且End恰好大于pFind，因为是内存基地址排序，恰好大于则证明pFind绝对不在End中，必然返回Beg，即便有可能也不在Beg中
+	}
+
 public:
 	AutoExpand_FixLen_MemPool(size_t _szMemBlockFixSize = sizeof(Type), size_t _szMemBlockPreAllocNum = 1024) ://把_szMemBlockPreAllocNum向上舍入到最近的2的指数次方
 		szMemBlockFixSize(_szMemBlockFixSize),
@@ -136,8 +162,6 @@ public:
 		pNodeArrSortPool[szArrEnd] = pNewNode;
 
 		++szArrEnd;
-		++szArrEnd;
-
 		szArrLastSwap = szArrEnd;
 	}
 
@@ -145,21 +169,25 @@ public:
 
 	AutoExpand_FixLen_MemPool(AutoExpand_FixLen_MemPool &&_Move) noexcept//移动构造
 	{
-		
+		//懒得实现，先不做
 	}
 
 	~AutoExpand_FixLen_MemPool(void)
 	{
-		
+		//一会在做，丢给操作系统清理先
 	}
 
 	Type *AllocMemBlock(void)
 	{
+		Type *pFreeMemBlock;
+
+		//循环直到分配成功或无内存池
 		while (true)
 		{
-			Type *pFreeMemBlock = pNodeArrFreePool[szArrBeg]->csMemPool.AllocMemBlock();
+			pFreeMemBlock = pNodeArrFreePool[szArrBeg]->csMemPool.AllocMemBlock();
 			if (pFreeMemBlock != NULL)
 			{
+				++szMemBlockUse;//计数菌
 				return pFreeMemBlock;
 			}
 
@@ -176,42 +204,52 @@ public:
 		}
 
 		//运行到此则代表没有可用空闲内存池了，动态分配一个
-		if (szArrEnd < PNODE_ARR_MAX_SIZE)//静态数组没满，还能分配
+		if (szArrEnd >= PNODE_ARR_MAX_SIZE)//静态数组满，不能分配
 		{
-			//把当前内存池调到尾部并直接覆盖
-			pNodeArrFreePool[szArrEnd] = pNodeArrFreePool[szArrBeg];
-			pNodeArrFreePool[szArrEnd]->szArrIdx = szArrEnd;
-			--szArrEnd;
-			//新建内存池
-			pNodeArrFreePool[szArrBeg] = ConstructorNode(szMemBlockFixSize, szMemBlockNum * szExpandMultiple - szMemBlockNum, szArrBeg);
-			szMemBlockNum *= szExpandMultiple;
-
-
-
-
-
+			return NULL;
 		}
 
+		//新建内存池，初始化索引为头部索引
+		Node *pNewNode = ConstructorNode(szMemBlockFixSize, szMemBlockNum * szExpandMultiple - szMemBlockNum, szArrBeg);
+		szMemBlockNum *= szExpandMultiple;
 
+		//插入到free数组头部，并将原先头部内存池放到数组尾部
+		pNodeArrFreePool[szArrEnd] = pNodeArrFreePool[szArrBeg];//因为尾部无有效数据，直接覆盖而无需调换
+		pNodeArrFreePool[szArrEnd]->szArrIdx = szArrEnd;//设置索引关联
+		pNodeArrFreePool[szArrBeg] = pNewNode;//插入头部
+		//注意此处还未插入另一数组，暂时不改变szArrEnd
 
+		//插入排序到sort数组（目前暂时不考虑类中无任何内存池的情况）
+		size_t szSortInsert = BinarySearchSortPool(pNewNode->csMemPool.GetMemPool()) + 1;//获取到下边界索引+1的插入点索引
+		//先移动元素（注意这里操作的是排序数组，Node里的索引与排序数组无关，无需更改）
+		memmove(pNodeArrSortPool[szSortInsert + 1], pNodeArrSortPool[szSortInsert], sizeof(*pNodeArrSortPool) * (szArrEnd - szSortInsert));//szArrEnd 
+		pNodeArrSortPool[szSortInsert] = pNewNode;//插入
 
+		//两数组都插入完毕，递增szArrEnd
+		++szArrEnd;
 
+		//操作完毕，重分配内存
+		pFreeMemBlock = pNodeArrFreePool[szArrBeg]->csMemPool.AllocMemBlock();
+		if (pFreeMemBlock != NULL)
+		{
+			++szMemBlockUse;//计数菌
+			return pFreeMemBlock;
+		}
 
-
-
+		return NULL;//卧槽这都能失败？
 	}
 
 	bool FreeMemBlock(Type *pAllocMemBlock)
 	{
 		
+
+
+
+
+
 	}
 
 	void FreeAllMemBlock(void)//注意，只是释放内存池已分配内存，并不会删除内存池
-	{
-		
-	}
-
-	void DeleteAllUnusePool(void)//删除所有未使用的内存池类
 	{
 		
 	}
@@ -231,5 +269,3 @@ public:
 		return szMemBlockUse;
 	}
 };
-
-#undef PNODE_ARR_MAX_SIZE
