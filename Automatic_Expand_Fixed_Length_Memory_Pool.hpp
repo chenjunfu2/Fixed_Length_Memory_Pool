@@ -126,7 +126,7 @@ private:
 	size_t BinarySearchSortPool(const void* pFind)//使用uintptr_t在排序池列表中二分查找，返回第一个内存池基地址不大于pFind的排序池列表的索引（左低右高排序）
 	{
 		size_t szFindBeg = szArrBeg;
-		size_t szFindEnd = szArrEnd;
+		size_t szFindEnd = szArrEnd;//注意这里End代表尾后索引并且返回值和数组访问无论如何都不会取到它
 		size_t szFindCur;
 
 		while (szFindEnd - szFindBeg > 1)//<=1时结束循环，此时pFind就在Beg到End中间
@@ -187,6 +187,7 @@ public:
 			pFreeMemBlock = pNodeArrFreePool[szArrBeg]->csMemPool.AllocMemBlock();
 			if (pFreeMemBlock != NULL)
 			{
+				//分配成功，召唤计数菌
 				++szMemBlockUse;//计数菌
 				return pFreeMemBlock;
 			}
@@ -232,6 +233,7 @@ public:
 		pFreeMemBlock = pNodeArrFreePool[szArrBeg]->csMemPool.AllocMemBlock();
 		if (pFreeMemBlock != NULL)
 		{
+			//分配成功，召唤计数菌
 			++szMemBlockUse;//计数菌
 			return pFreeMemBlock;
 		}
@@ -241,17 +243,41 @@ public:
 
 	bool FreeMemBlock(Type *pAllocMemBlock)
 	{
-		
+		if (pAllocMemBlock)
+		{
+			return true;
+		}
 
+		//计算指针所属的内存池索引
+		size_t szMemBelongSort = BinarySearchSortPool(pAllocMemBlock);
+		Node *pFreeNode = pNodeArrSortPool[szMemBelongSort];
+		//释放
+		if (pFreeNode->csMemPool.FreeMemBlock(pAllocMemBlock) == false)
+		{
+			return false;//释放失败，无需后续处理
+		}
 
+		//释放成功，召唤计数菌
+		--szMemBlockUse;//计数菌
 
+		//获取在空闲内存池中的索引
+		size_t szFreeIdx = pFreeNode->szArrIdx;
+		if (szArrLastSwap > szFreeIdx)//该池已在空闲区域，无需操作直接返回
+		{
+			return true;
+		}
 
+		//该池在满内存区域，与szArrLastSwap调换
+		if (szArrLastSwap != szFreeIdx)//无需与自己交换
+		{
+			//换入空闲区域
+			SwapFreePool(szFreeIdx, szArrLastSwap);
+		}
 
-	}
+		//递增使其代表的边界越过自身
+		++szArrLastSwap;
 
-	void FreeAllMemBlock(void)//注意，只是释放内存池已分配内存，并不会删除内存池
-	{
-		
+		return true;
 	}
 
 	size_t GetMemBlockFixSize(void) const
