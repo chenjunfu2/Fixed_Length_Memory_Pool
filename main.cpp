@@ -194,8 +194,9 @@ int maing(void)
 }
 
 
-#define NEW
+#define MYAUTO
 using my = FixLen_MemPool<void, false>;
+using my_auto = AutoExpand_FixLen_MemPool<FixLen_MemPool<void, false>>;
 
 #ifdef MY
 #define INIT(s,n)	my a(s, n)
@@ -209,6 +210,14 @@ time:
 	 freem:9.8250s
 	 unin :0.0270s
 	 all  :17.6690s
+*/
+#elif defined MYAUTO
+#define INIT(s,n)	my_auto a(s, n)
+#define ALLOC(s)	a.AllocMemBlock()
+#define FREE(p)		a.FreeMemBlock(p)
+#define UNIN()		a.~my_auto();
+/*
+
 */
 #elif defined NEW
 #define INIT(s,n)	//do nothing

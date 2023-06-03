@@ -167,14 +167,44 @@ public:
 
 	AutoExpand_FixLen_MemPool(const AutoExpand_FixLen_MemPool &) = delete;//禁用类拷贝构造
 
-	AutoExpand_FixLen_MemPool(AutoExpand_FixLen_MemPool &&_Move) noexcept//移动构造
+	AutoExpand_FixLen_MemPool(AutoExpand_FixLen_MemPool &&_Move) noexcept://移动构造
+		szArrEnd(_Move.szArrEnd),
+		szArrLastSwap(_Move.szArrLastSwap),
+
+		csMemPool(std::move(_Move.csMemPool)),
+
+		szMemBlockFixSize(_Move.szMemBlockFixSize),
+		szMemBlockNum(_Move.szMemBlockNum),
+		szMemBlockUse(_Move.szMemBlockUse)
 	{
-		//懒得实现，先不做
+		//拷贝数组
+		memcpy(pNodeArrFreePool, _Move.pNodeArrFreePool, sizeof(pNodeArrFreePool));
+		memcpy(pNodeArrSortPool, _Move.pNodeArrSortPool, sizeof(pNodeArrSortPool));
+
+		//清空成员
+		_Move.szArrEnd = 0;
+		_Move.szArrLastSwap = 0;
+
+		_Move.szMemBlockFixSize = 0;
+		_Move.szMemBlockNum = 0;
+		_Move.szMemBlockUse = 0;
 	}
 
 	~AutoExpand_FixLen_MemPool(void)
 	{
-		//一会在做，丢给操作系统清理先
+		//依次析构回收内存池	
+		for (size_t i = 0; i < szArrEnd; ++i)
+		{
+			DestructorNode(pNodeArrSortPool[i]);//依次析构回收内存
+		}
+		//两个数组内引用的都是同一段内存，所以清理其中一个即可
+
+		szArrEnd = 0;
+		szArrLastSwap = 0;
+
+		szMemBlockFixSize = 0;
+		szMemBlockNum = 0;
+		szMemBlockUse = 0;
 	}
 
 	Type *AllocMemBlock(void)
@@ -221,7 +251,7 @@ public:
 		//注意此处还未插入另一数组，暂时不改变szArrEnd
 
 		//插入排序到sort数组（目前暂时不考虑类中无任何内存池的情况）
-		size_t szSortInsert = BinarySearchSortPool(pNewNode->csMemPool.GetMemPool()) + 1;//获取到下边界索引+1的插入点索引
+		size_t szSortInsert = BinarySearchSortPool(pNewNode->csMemPool.GetMemPool()) + (szArrBeg != szArrEnd);//获取到下边界索引的插入点索引，如果szArrBeg==szArrEnd则代表是第一次插入，结果为0
 		//先移动元素（注意这里操作的是排序数组，Node里的索引与排序数组无关，无需更改）
 		memmove(pNodeArrSortPool[szSortInsert + 1], pNodeArrSortPool[szSortInsert], sizeof(*pNodeArrSortPool) * (szArrEnd - szSortInsert));//szArrEnd 
 		pNodeArrSortPool[szSortInsert] = pNewNode;//插入
