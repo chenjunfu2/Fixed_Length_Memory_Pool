@@ -291,13 +291,13 @@ public:
 		}
 	}
 
-	long CmpPointAndPool(const void *p) const//返回-1代表小于内存池基地址，返回0代表在内存池中，返回1代表大等于内存池尾部
+	long CmpPointAndPool(const void *pMem) const//返回-1代表小于内存池基地址，返回0代表在内存池中，返回1代表大等于内存池尾部
 	{
-		if (p < pMemPool)
+		if (pMem < pMemPool)
 		{
 			return -1;
 		}
-		else if (p >= (void *)((uintptr_t)pMemPool + szPoolSize))
+		else if (pMem >= (void *)((uintptr_t)pMemPool + szPoolSize))
 		{
 			return 1;
 		}

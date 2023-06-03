@@ -36,7 +36,7 @@
 
 #define PNODE_ARR_MAX_SIZE ArrMaxNum()
 
-template <typename Pool_class, bool bAutoDelUnuse = false, size_t szExpandMultiple = 2, typename Alloc_func = default_alloc, typename Free_func = default_free>
+template <typename Pool_class, bool bAutoDelUnuse = false, size_t szExpandMultiple = 2, size_t szAlignment = 4, typename Alloc_func = default_alloc, typename Free_func = default_free>
 class AutoExpand_FixLen_MemPool
 {
 	static_assert(szExpandMultiple >= 2);

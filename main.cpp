@@ -1,5 +1,5 @@
 #include "Fixed_Length_Memory_Pool.hpp"
-//#include "Automatic_Expand_Fixed_Length_Memory_Pool.hpp"
+#include "Automatic_Expand_Fixed_Length_Memory_Pool.hpp"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,7 +21,7 @@
 void *pArr[BLOCK_NUM];
 
 //性能测试
-int main(void)
+int mainz(void)
 {
 	printf("info:\n    block size=%ldByte\n     block num=%ld\n      mem size=%.4lfMB\n", BLOCK_SIZE, BLOCK_NUM, (long double)BLOCK_SIZE * (long double)BLOCK_NUM / (long double)1024 / (long double)1024);
 	clock_t start, alloc, end;
@@ -194,7 +194,7 @@ int maing(void)
 }
 
 
-#define MY
+#define NEW
 using my = FixLen_MemPool<void, false>;
 
 #ifdef MY
@@ -204,11 +204,11 @@ using my = FixLen_MemPool<void, false>;
 #define UNIN()		a.~my();
 /*
 time:
-	 init :0.1070s
-	 alloc:0.4440s
-	 freem:0.5630s
-	 unin :0.0250s
-	 all  :1.1390s
+	 init :0.1110s
+	 alloc:7.7060s
+	 freem:9.8250s
+	 unin :0.0270s
+	 all  :17.6690s
 */
 #elif defined NEW
 #define INIT(s,n)	//do nothing
@@ -218,10 +218,10 @@ time:
 /*
 time:
 	 init :0.0000s
-	 alloc:2.3530s
-	 freem:2.5900s
+	 alloc:43.5330s
+	 freem:47.0920s
 	 unin :0.0000s
-	 all  :4.9430s
+	 all  :90.6250s
 */
 #elif defined MALLOC//
 #define INIT(s,n)	//do nothing
@@ -230,11 +230,7 @@ time:
 #define UNIN()		//do nothing
 /*
 time:
-	 init :0.0000s
-	 alloc:2.6430s
-	 freem:3.2420s
-	 unin :0.0000s
-	 all  :5.8850s
+
 */
 #endif // MY
 
@@ -242,11 +238,13 @@ time:
 #define CLOCKTOSEC(val) (((long double)(val)) / (long double)CLOCKS_PER_SEC)
 
 //性能测试
-int mainj(void)
+int main(void)
 {
-	clock_t init, alloc, freem, unin, all;
+	clock_t init = 0, alloc = 0, freem = 0, unin = 0, all = 0;
+	clock_t temp = 0;
 
 	{
+		//单次计时
 		init = clock();
 		INIT(BLOCK_SIZE, BLOCK_NUM);
 		init = clock() - init;
@@ -262,12 +260,14 @@ int mainj(void)
 			srand(j);
 			printf("  srand:ok\n");
 
-			alloc = clock();
+			//循环计时
+			temp = clock();
 			for (int i = 0; i < BLOCK_NUM; ++i)
 			{
 				pArr[i] = ALLOC(BLOCK_SIZE);
 			}
-			alloc = clock() - alloc;
+			temp = clock() - temp;
+			alloc += temp;//累计耗时
 
 			printf("  alloc:ok\n");
 
@@ -280,17 +280,20 @@ int mainj(void)
 
 			printf("  rand:ok\n");
 
-			freem = clock();
+			//循环计时
+			temp = clock();
 			for (int i = 0; i < BLOCK_NUM; ++i)
 			{
 				//释放末尾元素
 				FREE(pArr[i]);
 			}
-			freem = clock() - freem;
+			temp = clock() - temp;
+			freem += temp;//累计耗时
 
 			printf("  free:ok\n");
 		}
 
+		//单次计时
 		unin = clock();
 		UNIN();
 		unin = clock() - unin;
