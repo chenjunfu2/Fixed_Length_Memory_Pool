@@ -74,12 +74,15 @@ protected:
 	}
 
 	static constexpr size_t PNODE_ARR_MAX_SIZE = ArrMaxNum();//61
-	using Type = Pool_class::RetPoint_Type;
+
 	struct Node
 	{
 		Pool_class csMemPool;
 		size_t szArrIdx;//这个结构在空闲池数组中的索引
 	};
+
+	using Type = Pool_class::RetPoint_Type;
+	using Manage_Pool = FixLen_MemPool<Node, false, szAlignment, Alloc_func, Free_func>;
 
 private:
 	Node* pNodeArrFreePool[PNODE_ARR_MAX_SIZE];//空闲内存池（szArrLastSwap索引左边，不包括其指代都为空闲内存池，右边，包括其指代都为已满内存池）
@@ -89,7 +92,7 @@ private:
 	size_t szArrEnd = 0;//尾后索引
 	size_t szArrLastSwap = 0;//上一次交换的索引
 
-	FixLen_MemPool<Node, false, 4, Alloc_func, Free_func> csMemPool = (sizeof(Node), PNODE_ARR_MAX_SIZE);//用一个内存池来管理后续的内部分配释放
+	Manage_Pool csMemPool = Manage_Pool(sizeof(Node), PNODE_ARR_MAX_SIZE);//用一个内存池来管理后续的内部分配释放
 
 	size_t szMemBlockFixSize = 0;//用户初始化时需要的定长内存长度（size：字节数）
 	size_t szMemBlockNum = 0;//内存池中总内存块个数
@@ -116,7 +119,7 @@ private:
 		csMemPool.FreeMemBlock(pNode);//回收内存
 	}
 
-	void SwapFreePool(size_t szLeftIdx,size_t szRightIdx)//交换两个空闲内存池
+	void SwapFreePool(size_t szLeftIdx, size_t szRightIdx)//交换两个空闲内存池
 	{
 		std::swap(pNodeArrFreePool[szLeftIdx], pNodeArrFreePool[szRightIdx]);
 		pNodeArrFreePool[szLeftIdx]->szArrIdx = szLeftIdx;
@@ -131,7 +134,7 @@ private:
 
 		while (szFindEnd - szFindBeg > 1)//<=1时结束循环，此时pFind就在Beg到End中间
 		{
-			szFindCur = (szArrEnd - szArrBeg) / 2;//计算当前的中点
+			szFindCur = (szFindBeg + szFindEnd) / 2;//计算当前的中点
 
 			long lCmp = pNodeArrSortPool[szFindCur]->csMemPool.CmpPointAndPool(pFind);//比较目标指针和内存池地址
 			if (lCmp < 0)//小于
@@ -150,6 +153,33 @@ private:
 
 		return szFindBeg;//Beg恰好小于pFind且End恰好大于pFind，因为是内存基地址排序，恰好大于则证明pFind绝对不在End中，必然返回Beg，即便有可能也不在Beg中
 	}
+
+	void BinaryInsertSortPool(Node *pInsertNode)
+	{
+		long lFindBeg = szArrBeg;
+		long lFindEnd = (long)szArrEnd - 1;
+		long lFindCur;
+
+		while (lFindBeg <= lFindEnd)//>时结束循环，此时lFindBeg就是符合的插入点
+		{
+			lFindCur = (lFindBeg + lFindEnd) / 2;//计算当前的中点
+
+			long lCmp = pNodeArrSortPool[lFindCur]->csMemPool.CmpPointAndPool(pInsertNode->csMemPool.GetMemPool());//比新节点的内存池地址
+			if (lCmp < 0)//小于
+			{
+				lFindEnd = lFindCur - 1;//目标在左边，截断End
+			}
+			else//大于
+			{
+				lFindBeg = lFindCur + 1;//目标在右边，截断Beg
+			}
+		}
+
+		//先移动元素（注意这里操作的是排序数组，Node里的索引与排序数组无关，无需更改）
+		memmove(&pNodeArrSortPool[lFindBeg + 1], &pNodeArrSortPool[lFindBeg], sizeof(*pNodeArrSortPool) * (szArrEnd - lFindBeg));//szArrEnd 
+		pNodeArrSortPool[lFindBeg] = pInsertNode;//插入
+	}
+
 
 public:
 	AutoExpand_FixLen_MemPool(size_t _szMemBlockFixSize = sizeof(Type), size_t _szMemBlockPreAllocNum = 1024) ://把_szMemBlockPreAllocNum向上舍入到最近的2的指数次方
@@ -250,12 +280,9 @@ public:
 		pNodeArrFreePool[szArrBeg] = pNewNode;//插入头部
 		//注意此处还未插入另一数组，暂时不改变szArrEnd
 
-		//插入排序到sort数组（目前暂时不考虑类中无任何内存池的情况）
-		size_t szSortInsert = BinarySearchSortPool(pNewNode->csMemPool.GetMemPool()) + (szArrBeg != szArrEnd);//获取到下边界索引的插入点索引，如果szArrBeg==szArrEnd则代表是第一次插入，结果为0
-		//先移动元素（注意这里操作的是排序数组，Node里的索引与排序数组无关，无需更改）
-		memmove(pNodeArrSortPool[szSortInsert + 1], pNodeArrSortPool[szSortInsert], sizeof(*pNodeArrSortPool) * (szArrEnd - szSortInsert));//szArrEnd 
-		pNodeArrSortPool[szSortInsert] = pNewNode;//插入
-
+		//插入排序到sort数组
+		BinaryInsertSortPool(pNewNode);
+		
 		//两数组都插入完毕，递增szArrEnd
 		++szArrEnd;
 
@@ -273,7 +300,7 @@ public:
 
 	bool FreeMemBlock(Type *pAllocMemBlock)
 	{
-		if (pAllocMemBlock)
+		if (pAllocMemBlock == NULL)
 		{
 			return true;
 		}

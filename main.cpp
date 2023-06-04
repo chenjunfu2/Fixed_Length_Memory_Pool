@@ -194,7 +194,7 @@ int maing(void)
 }
 
 
-#define MYAUTO
+#define MY
 using my = FixLen_MemPool<void, false>;
 using my_auto = AutoExpand_FixLen_MemPool<FixLen_MemPool<void, false>>;
 
@@ -217,7 +217,12 @@ time:
 #define FREE(p)		a.FreeMemBlock(p)
 #define UNIN()		a.~my_auto();
 /*
-
+time:
+	 init :0.0000s
+	 alloc:9.0410s
+	 freem:13.9710s
+	 unin :0.0260s
+	 all  :23.0120s
 */
 #elif defined NEW
 #define INIT(s,n)	//do nothing
@@ -255,7 +260,7 @@ int main(void)
 	{
 		//单次计时
 		init = clock();
-		INIT(BLOCK_SIZE, BLOCK_NUM);
+		INIT(BLOCK_SIZE, 1);//改成1，极限测试
 		init = clock() - init;
 
 		printf("init:ok\n\n");
@@ -307,7 +312,7 @@ int main(void)
 		UNIN();
 		unin = clock() - unin;
 
-		printf("unin:ok\n\n");
+		printf("\nunin:ok\n\n");
 	}
 	
 #ifdef MY
