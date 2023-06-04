@@ -219,10 +219,10 @@ time:
 /*
 time:
 	 init :0.0000s
-	 alloc:9.0190s
-	 freem:14.8360s
+	 alloc:8.5950s
+	 freem:14.2910s
 	 unin :0.0260s
-	 all  :23.8550s
+	 all  :22.9120s
 */
 #elif defined NEW
 #define INIT(s)	//do nothing
@@ -315,12 +315,7 @@ int main(void)
 		printf("\nunin:ok\n\n");
 	}
 	
-#ifdef MY
 	all = init + alloc + freem + unin;
-#else
-	all = alloc + freem;
-#endif // MY
-
 
 	printf(
 		"time:\n"\
