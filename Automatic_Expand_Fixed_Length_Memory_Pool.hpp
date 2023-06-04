@@ -223,7 +223,7 @@ public:
 	~AutoExpand_FixLen_MemPool(void)
 	{
 		//依次析构回收内存池	
-		for (size_t i = 0; i < szArrEnd; ++i)
+		for (size_t i = szArrBeg; i < szArrEnd; ++i)
 		{
 			DestructorNode(pNodeArrSortPool[i]);//依次析构回收内存
 		}

@@ -12,7 +12,7 @@
 
 #define BLOCK_SIZE 8
 //#define BLOCK_NUM 134217728
-#define BLOCK_NUM (67108864)
+#define BLOCK_NUM 67108864
 //#define BLOCK_NUM 32768
 
 #define CLOCKTOSEC(start,end) ((long double)((end) - (start)) / (long double)CLOCKS_PER_SEC)
@@ -205,11 +205,11 @@ using my_auto = AutoExpand_FixLen_MemPool<FixLen_MemPool<void, false>>;
 #define UNIN()		a.~my();
 /*
 time:
-	 init :0.1050s
-	 alloc:7.2350s
-	 freem:9.3800s
-	 unin :0.0250s
-	 all  :16.7450s
+	 init :0.1060s
+	 alloc:7.2090s
+	 freem:9.3240s
+	 unin :0.0520s
+	 all  :16.6910s
 */
 #elif defined MYAUTO
 #define INIT(s)	my_auto a(s, 1)//从最低的1开始分配，极限测试
@@ -219,10 +219,10 @@ time:
 /*
 time:
 	 init :0.0000s
-	 alloc:8.5950s
-	 freem:14.2910s
-	 unin :0.0260s
-	 all  :22.9120s
+	 alloc:8.7560s
+	 freem:14.2750s
+	 unin :0.0570s
+	 all  :23.0880s
 */
 #elif defined NEW
 #define INIT(s)	//do nothing
@@ -232,10 +232,10 @@ time:
 /*
 time:
 	 init :0.0000s
-	 alloc:43.5330s
-	 freem:47.0920s
+	 alloc:40.1790s
+	 freem:41.8710s
 	 unin :0.0000s
-	 all  :90.6250s
+	 all  :82.0500s
 */
 #elif defined MALLOC//
 #define INIT(s)	//do nothing
@@ -287,6 +287,7 @@ int main(void)
 
 			for (int i = BLOCK_NUM - 1; i >= 0; --i)
 			{
+				memset(pArr[i], 0xCD, BLOCK_SIZE);//完全覆写测试，确保安全稳定
 				int f = rand() % (i + 1);//挑选一个随机幸运元素释放
 				//挑选到的元素与末尾交换
 				std::swap(pArr[f], pArr[i]);
