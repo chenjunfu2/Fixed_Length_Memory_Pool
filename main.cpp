@@ -194,38 +194,38 @@ int maing(void)
 }
 
 
-#define MY
+#define MYAUTO
 using my = FixLen_MemPool<void, false>;
 using my_auto = AutoExpand_FixLen_MemPool<FixLen_MemPool<void, false>>;
 
 #ifdef MY
-#define INIT(s,n)	my a(s, n)
+#define INIT(s)	my a(s, BLOCK_NUM)
 #define ALLOC(s)	a.AllocMemBlock()
 #define FREE(p)		a.FreeMemBlock(p)
 #define UNIN()		a.~my();
 /*
 time:
-	 init :0.1110s
-	 alloc:7.7060s
-	 freem:9.8250s
-	 unin :0.0270s
-	 all  :17.6690s
+	 init :0.1050s
+	 alloc:7.2350s
+	 freem:9.3800s
+	 unin :0.0250s
+	 all  :16.7450s
 */
 #elif defined MYAUTO
-#define INIT(s,n)	my_auto a(s, n)
+#define INIT(s)	my_auto a(s, 1)//从最低的1开始分配，极限测试
 #define ALLOC(s)	a.AllocMemBlock()
 #define FREE(p)		a.FreeMemBlock(p)
 #define UNIN()		a.~my_auto();
 /*
 time:
 	 init :0.0000s
-	 alloc:9.0410s
-	 freem:13.9710s
+	 alloc:9.0190s
+	 freem:14.8360s
 	 unin :0.0260s
-	 all  :23.0120s
+	 all  :23.8550s
 */
 #elif defined NEW
-#define INIT(s,n)	//do nothing
+#define INIT(s)	//do nothing
 #define ALLOC(s)	new char[s]
 #define FREE(p)		delete[](char*)p
 #define UNIN()		//do nothing
@@ -238,7 +238,7 @@ time:
 	 all  :90.6250s
 */
 #elif defined MALLOC//
-#define INIT(s,n)	//do nothing
+#define INIT(s)	//do nothing
 #define ALLOC(s)	malloc(s)
 #define FREE(p)		free(p)
 #define UNIN()		//do nothing
@@ -260,7 +260,7 @@ int main(void)
 	{
 		//单次计时
 		init = clock();
-		INIT(BLOCK_SIZE, 1);//改成1，极限测试
+		INIT(BLOCK_SIZE);
 		init = clock() - init;
 
 		printf("init:ok\n\n");
