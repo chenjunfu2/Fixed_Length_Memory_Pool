@@ -250,6 +250,7 @@ time:
 
 #undef CLOCKTOSEC
 #define CLOCKTOSEC(val) (((long double)(val)) / (long double)CLOCKS_PER_SEC)
+//#define memeset
 
 //性能测试
 int main(void)
@@ -287,10 +288,10 @@ int main(void)
 
 			for (int i = BLOCK_NUM - 1; i >= 0; --i)
 			{
-				memset(pArr[i], 0xCD, BLOCK_SIZE);//完全覆写测试，确保安全稳定
 				int f = rand() % (i + 1);//挑选一个随机幸运元素释放
 				//挑选到的元素与末尾交换
 				std::swap(pArr[f], pArr[i]);
+				memset(pArr[i], 0xCD, BLOCK_SIZE);//完全覆写测试，确保安全稳定
 			}
 
 			printf("  rand:ok\n");
