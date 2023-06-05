@@ -86,7 +86,7 @@ private:
 	//size_t szBaseMemSize = 0;//总内存大小
 
 protected:
-	void *ThrowMalloc(size_t szMemSize)
+	void *ThrowMalloc(size_t szMemSize) const
 	{
 		Alloc_func fAlloc;
 		void *p = fAlloc(szMemSize);
@@ -97,10 +97,20 @@ protected:
 		return p;
 	}
 
-	void NoThrowFree(void *pMem)
+	void NoThrowFree(void *pMem) const
 	{
 		Free_func fFree;
 		fFree(pMem);
+	}
+
+	static size_t AlignedSize(size_t szSize)
+	{
+		return (szSize + szAlignment - 1) & ~(szAlignment - 1);
+	}
+
+	static void *AlignedMem(void *pMem)
+	{
+		return (void *)(((uintptr_t)pMem + szAlignment - 1) & ~(szAlignment - 1));
 	}
 public:
 	using RetPoint_Type = Type;
@@ -327,14 +337,20 @@ public:
 		return pMemPool;
 	}
 
-	static size_t AlignedSize(size_t szSize)
+	static size_t Aligned(size_t szSize, size_t szAlign)
 	{
-		return (szSize + szAlignment - 1) & ~(szAlignment - 1);
-	}
-
-	static void *AlignedMem(void *pMem)
-	{
-		return (void *)(((uintptr_t)pMem + szAlignment - 1) & ~(szAlignment - 1));
+		if (szAlign == 0 || szAlign == 1)
+		{
+			return szSize;
+		}
+		else if (szAlign % 2 == 0)
+		{
+			return (szSize + szAlign - 1) & ~(szAlign - 1);
+		}
+		else
+		{
+			return szSize < szAlign ? szAlign : szSize + (szAlign - (szSize % szAlign));
+		}
 	}
 };
 
