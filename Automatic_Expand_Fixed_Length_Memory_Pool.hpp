@@ -204,7 +204,6 @@ private:
 		memmove(&pNodeArrSortPool[lFindBeg + 1], &pNodeArrSortPool[lFindBeg], sizeof(*pNodeArrSortPool) * (szArrEnd - lFindBeg));//szArrEnd 
 		pNodeArrSortPool[lFindBeg] = pInsertNode;//插入
 
-
 		//两数组都插入完毕，递增szArrEnd
 		++szArrEnd;
 	}
@@ -434,16 +433,21 @@ public:
 	}
 
 	template<typename Unary_Predicates = bool (*)(const Pool_class &)>
-	size_t RemoveEligibleMemPool(Unary_Predicates upFunc = default_remove)
+	size_t RemoveEligibleMemPool(Unary_Predicates upFunc = default_remove)//注意如果这里将节点全部删除，则下次扩容时会出现问题
 	{
 		size_t szRemoveCount = 0;
-		for (size_t i = szArrBeg; i < szArrEnd; ++i)
+
+		size_t i = szArrBeg;
+		while (i < szArrEnd)
 		{
 			if (upFunc(pNodeArrSortPool[i]->csMemPool) == true)
 			{
 				RemoveAndFreeNodeFromArr(i);//删除节点
 				++szRemoveCount;//增加删除计数
+				continue;//删除之后当前i就是下一个节点，无需递增直接continue
 			}
+
+			++i;
 		}
 
 		return szRemoveCount;
@@ -451,8 +455,11 @@ public:
 
 	static bool default_traverse(const Pool_class &c)
 	{
-		//use c
-		return true;//继续遍历
+		if (c.GetMemBlockUse() != 0)
+		{
+			//use c
+			return true;//继续遍历
+		}
 		return false;//不要再遍历了，结束循环
 	}
 
