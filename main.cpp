@@ -196,7 +196,7 @@ int maing(void)
 
 #define MYAUTO
 using my = FixLen_MemPool<void, false>;
-using my_auto = AutoExpand_FixLen_MemPool<FixLen_MemPool<void, false>>;
+using my_auto = AutoExpand_FixLen_MemPool<my>;
 
 #ifdef MY
 #define INIT(s)	my a(s, BLOCK_NUM)

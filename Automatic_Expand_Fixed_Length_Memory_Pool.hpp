@@ -74,7 +74,7 @@ protected:
 		return szNum;
 	}
 
-	static constexpr size_t PNODE_ARR_MAX_SIZE = ArrMaxNum();//61
+	static constexpr size_t PNODE_ARR_MAX_NUM = ArrMaxNum();//61
 
 	struct Node
 	{
@@ -86,14 +86,14 @@ protected:
 	using Manage_Pool = FixLen_MemPool<Node, false, szAlignment, Alloc_func, Free_func>;
 
 private:
-	Node *pNodeArrFreePool[PNODE_ARR_MAX_SIZE] = {0};//空闲内存池（szArrLastSwap索引左边，不包括其指代都为空闲内存池，右边，包括其指代都为已满内存池）
-	Node* pNodeArrSortPool[PNODE_ARR_MAX_SIZE] = {0};//排序内存池（按内存池地址排序Node，左低右高）
+	Node *pNodeArrFreePool[PNODE_ARR_MAX_NUM] = {0};//空闲内存池（szArrLastSwap索引左边，不包括其指代都为空闲内存池，右边，包括其指代都为已满内存池）
+	Node* pNodeArrSortPool[PNODE_ARR_MAX_NUM] = {0};//排序内存池（按内存池地址排序Node，左低右高）
 
 	static constexpr size_t szArrBeg = 0;//头部索引
 	size_t szArrEnd = 0;//尾后索引
 	size_t szArrLastSwap = 0;//上一次交换的索引
 
-	Manage_Pool csMemPool = Manage_Pool(sizeof(Node), PNODE_ARR_MAX_SIZE);//用一个内存池来管理后续的内部分配释放
+	Manage_Pool csMemPool = Manage_Pool(sizeof(Node), PNODE_ARR_MAX_NUM);//用一个内存池来管理后续的内部分配释放
 
 	size_t szMemBlockFixSize = 0;//用户初始化时需要的定长内存长度（size：字节数）
 	size_t szMemBlockNum = 0;//内存池中总内存块个数
@@ -141,11 +141,10 @@ private:
 	{
 		size_t szFindBeg = szArrBeg;
 		size_t szFindEnd = szArrEnd;//注意这里End代表尾后索引并且返回值和数组访问无论如何都不会取到它
-		size_t szFindCur;
 
 		while (szFindEnd - szFindBeg > 1)//<=1时结束循环，此时pFind就在Beg到End中间
 		{
-			szFindCur = (szFindBeg + szFindEnd) / 2;//计算当前的中点
+			size_t szFindCur = (szFindBeg + szFindEnd) / 2;//计算当前的中点
 
 			long lCmp = pNodeArrSortPool[szFindCur]->csMemPool.CmpPointAndPool(pFind);//比较目标指针和内存池地址
 			if (lCmp < 0)//小于
@@ -165,30 +164,39 @@ private:
 		return szFindBeg;//Beg恰好小于pFind且End恰好大于pFind，因为是内存基地址排序，恰好大于则证明pFind绝对不在End中，必然返回Beg，即便有可能也不在Beg中
 	}
 
-	void InsertNodeToArr(Node *pInsertNode)
+	void AllocAndInsertNodeToArr(size_t szNewPoolBlockNum, bool bInsertHead)//true为头部插入，false为szArrLastSwap插入
 	{
-		//插入到free数组头部，并将原先头部内存池放到数组尾部
-		MoveFreePool(szArrEnd, szArrBeg);//因为尾部无有效数据，直接覆盖而无需调换
-		pNodeArrFreePool[szArrBeg] = pInsertNode;//插入头部
+		//分配节点
+		size_t szInsertIdx = bInsertHead ? szArrBeg : szArrLastSwap;
+		Node *pInsertNode = ConstructorNode(szMemBlockFixSize, szNewPoolBlockNum, szInsertIdx);//新建内存池，初始化索引
+		szMemBlockNum += pInsertNode->csMemPool.GetMemBlockNum();//增加当前总节点的数目
+
+		//插入到szInsertIdx，并将原先头部内存池放到数组尾部
+		MoveFreePool(szArrEnd, szInsertIdx);//因为尾部无有效数据，直接覆盖而无需调换
+		pNodeArrFreePool[szInsertIdx] = pInsertNode;//插入szInsertIdx
+
+		if (bInsertHead == false)
+		{
+			++szArrLastSwap;//移动边界
+		}
 
 		//注意此处还未插入另一数组，暂时不改变szArrEnd，且此插入过程不影响szArrLastSwap
 
 		long lFindBeg = szArrBeg;
 		long lFindEnd = (long)szArrEnd - 1;
-		long lFindCur;
 
 		while (lFindBeg <= lFindEnd)//>时结束循环，此时lFindBeg就是符合的插入点
 		{
-			lFindCur = (lFindBeg + lFindEnd) / 2;//计算当前的中点
+			long lFindCur = (lFindBeg + lFindEnd) / 2;//计算当前的中点
 
-			long lCmp = pNodeArrSortPool[lFindCur]->csMemPool.CmpPointAndPool(pInsertNode->csMemPool.GetMemPool());//比新节点的内存池地址
+			long lCmp = pNodeArrSortPool[lFindCur]->csMemPool.CmpPointAndPool(pInsertNode->csMemPool.GetMemPool());//比较新节点的内存池地址
 			if (lCmp < 0)//小于
 			{
-				lFindEnd = lFindCur - 1;//目标在左边，截断End
+				lFindEnd = lFindCur - 1;//目标在左边，截断End到Cur-1
 			}
 			else//大于
 			{
-				lFindBeg = lFindCur + 1;//目标在右边，截断Beg
+				lFindBeg = lFindCur + 1;//目标在右边，截断Beg到Cur+1
 			}
 		}
 
@@ -201,10 +209,8 @@ private:
 		++szArrEnd;
 	}
 
-	Node *RemoveNodeFromArr(size_t szSortRemoveIdx)//注意这里的Idx为Sort数组的Idx而不是Free数组的Idx
+	void RemoveAndFreeNodeFromArr(size_t szSortRemoveIdx)//注意这里的Idx为Sort数组的Idx而不是Free数组的Idx
 	{
-		//注意此删除过程可能影响szArrLastSwap
-
 		//先保存待删除指针
 		Node *pRemoveNode = pNodeArrSortPool[szSortRemoveIdx];
 
@@ -232,7 +238,11 @@ private:
 		//两数组都删除完毕，递减szArrEnd
 		--szArrEnd;
 
-		return pRemoveNode;//返回删除节点以便在外部释放
+		//减少当前总节点的数目
+		szMemBlockNum -= pRemoveNode->csMemPool.GetMemBlockNum();
+
+		//释放节点
+		DestructorNode(pRemoveNode);
 	}
 
 public:
@@ -319,18 +329,16 @@ public:
 		}
 
 		//运行到此则代表没有可用空闲内存池了，动态分配一个
-		if (szArrEnd >= PNODE_ARR_MAX_SIZE)//静态数组满，不能分配
+		if (szArrEnd >= PNODE_ARR_MAX_NUM)//静态数组满，不能分配
 		{
 			return NULL;
 		}
-
-		//新建内存池，初始化索引为头部索引
+		
+		//计算行分配的大小
 		size_t szNewPoolBlockNum = Pool_class::Aligned(szMemBlockNum * szExpandMultiple, szAlignBlockNum) - szMemBlockNum;
-		Node *pNewNode = ConstructorNode(szMemBlockFixSize, szNewPoolBlockNum, szArrBeg);
-		szMemBlockNum += szNewPoolBlockNum;
 
-		//插入到数组
-		InsertNodeToArr(pNewNode);
+		//分配并插入到数组
+		AllocAndInsertNodeToArr(szNewPoolBlockNum, true);
 
 		//操作完毕，重分配内存
 		pFreeMemBlock = pNodeArrFreePool[szArrBeg]->csMemPool.AllocMemBlock();
@@ -383,6 +391,39 @@ public:
 		return true;
 	}
 
+	bool Capacity(void)//按模板倍数扩容1次
+	{
+		if (szArrEnd >= PNODE_ARR_MAX_NUM)
+		{
+			return false;//数组已满
+		}
+
+		//分配内存
+		size_t szNewPoolBlockNum = Pool_class::Aligned(szMemBlockNum * szExpandMultiple, szAlignBlockNum) - szMemBlockNum;//计算对齐
+
+		//插入空闲区
+		AllocAndInsertNodeToArr(szNewPoolBlockNum, false);
+
+		return true;
+	}
+
+	bool AddNewMemPool(size_t _szMemBlockPreAllocNum)//按照_szMemBlockPreAllocNum和模板对齐要求新增一个空闲内存池
+	{
+		if (szArrEnd >= PNODE_ARR_MAX_NUM)
+		{
+			return false;//数组已满
+		}
+
+		//分配内存
+		size_t szNewPoolBlockNum = Pool_class::Aligned(_szMemBlockPreAllocNum, szAlignBlockNum);//计算对齐
+
+		//插入空闲区
+		AllocAndInsertNodeToArr(szNewPoolBlockNum, false);
+
+		return true;
+	}
+
+
 	static bool default_remove(const Pool_class &c)
 	{
 		if (c.GetMemBlockUse() == 0 && c.GetMemBlockNum() < 64)
@@ -400,9 +441,8 @@ public:
 		{
 			if (upFunc(pNodeArrSortPool[i]->csMemPool) == true)
 			{
-				Node *pRemoveNode = RemoveNodeFromArr(i);
-				DestructorNode(pRemoveNode);
-				++szRemoveCount;
+				RemoveAndFreeNodeFromArr(i);//删除节点
+				++szRemoveCount;//增加删除计数
 			}
 		}
 
@@ -427,13 +467,6 @@ public:
 			}
 		}
 	}
-
-
-
-
-
-
-
 
 	size_t GetMemBlockFixSize(void) const
 	{
@@ -464,5 +497,4 @@ public:
 	{
 		return szArrEnd - szArrLastSwap;
 	}
-
 };
