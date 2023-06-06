@@ -32,10 +32,9 @@
 **Fixed_Length_Memory_Pool**：  
 ```cpp
 FixLen_MemPool<void>
-
 ```
 
 **Automatic_Expand_Fixed_Length_Memory_Pool**：  
-
-
-
+```cpp
+AutoExpand_FixLen_MemPool<FixLen_MemPool<void>>
+```
