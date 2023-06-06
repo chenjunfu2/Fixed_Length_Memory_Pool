@@ -497,7 +497,7 @@ public:
 	}
 
 	//示例函数
-	static bool default_traverse(const Pool_class &c)
+	static bool default_traverse(Pool_class &c)
 	{
 		if (c.GetMemBlockUse() != 0)
 		{
@@ -509,7 +509,7 @@ public:
 
 	//遍历所有符合一元谓词判断结果的内存池(返回true继续遍历,返回false结束遍历)
 	template<typename Unary_Predicates = decltype(default_traverse)>
-	size_t TraverseEligibleMemPool(Unary_Predicates upFunc = default_traverse) const noexcept
+	size_t TraverseEligibleMemPool(Unary_Predicates upFunc = default_traverse) noexcept
 	{
 		for (size_t i = szArrBeg; i < szArrEnd; ++i)
 		{
