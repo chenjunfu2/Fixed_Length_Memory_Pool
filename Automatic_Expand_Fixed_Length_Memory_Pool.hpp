@@ -351,7 +351,7 @@ public:
 		return NULL;//卧槽这都能失败？
 	}
 
-	bool FreeMemBlock(Type *pAllocMemBlock)
+	bool FreeMemBlock(Type *pAllocMemBlock) noexcept
 	{
 		if (pAllocMemBlock == NULL)
 		{
@@ -388,6 +388,28 @@ public:
 		++szArrLastSwap;
 
 		return true;
+	}
+
+	template<typename... Args>
+	Type *AllocMemBlockConstructor(Args&&... args)
+	{
+		Type *pFreeMemBlock = AllocMemBlock();
+		if (pFreeMemBlock == NULL)
+		{
+			return NULL;
+		}
+
+		//构造new
+		new(pFreeMemBlock) Type(std::forward<Args>(args)...);
+
+		return pFreeMemBlock;
+	}
+
+	//析构并回收对象地址
+	bool FreeMemBlockDestructor(Type *pAllocMemBlock) noexcept
+	{
+		pAllocMemBlock->~Type();
+		return FreeMemBlock(pAllocMemBlock);
 	}
 
 	bool Capacity(void)//按模板倍数扩容1次

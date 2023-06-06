@@ -269,7 +269,7 @@ public:
 	bool FreeMemBlockDestructor(Type *pAllocMemBlock) noexcept
 	{
 		pAllocMemBlock->~Type();
-		FreeMemBlock(pAllocMemBlock);
+		return FreeMemBlock(pAllocMemBlock);
 	}
 
 	void Reset(void) noexcept
