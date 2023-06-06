@@ -67,7 +67,12 @@ struct default_free
 
 #define SENTINEL_POINTER ((void *)(NULL + 1))//哨兵指针
 
-template <typename Type, bool bLazyInit = false, size_t szAlignment = 4, typename Alloc_func = default_alloc, typename Free_func = default_free>//分配时的返回类型、懒惰初始化策略（此策略会修改代码段，所以使用模板 & constexpr if）
+template <
+	typename Type,//分配时的返回类型
+	bool bLazyInit = false,//懒惰初始化策略（此策略会修改代码段，所以使用模板 & constexpr if）
+	size_t szAlignment = 4,//内存对齐边界
+	typename Alloc_func = default_alloc,//默认分配器
+	typename Free_func = default_free>//默认释放器
 class FixLen_MemPool
 {
 	static_assert(szAlignment == 1 || (szAlignment != 0 && szAlignment % 2 == 0));
@@ -141,6 +146,7 @@ public:
 	}
 
 	FixLen_MemPool(const FixLen_MemPool &) = delete;//禁用类拷贝构造
+	FixLen_MemPool &operator=(const FixLen_MemPool &) = delete;//禁用复制赋值重载
 
 	FixLen_MemPool(FixLen_MemPool &&_Move) noexcept ://移动构造
 		szMemBlockFixSize(_Move.szMemBlockFixSize),

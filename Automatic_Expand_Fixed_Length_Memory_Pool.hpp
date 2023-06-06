@@ -33,7 +33,13 @@
 
 */
 
-template <typename Pool_class, size_t szExpandMultiple = 2, size_t szAlignment = 4, size_t szAlignBlockNum = 2, typename Alloc_func = default_alloc, typename Free_func = default_free >
+template <
+	typename Pool_class,//内存池类型
+	size_t szExpandMultiple = 2,//扩容倍数
+	size_t szAlignment = 4,//管理内存的对齐边界
+	size_t szAlignBlockNum = 2,//内存池内存块个数对齐的边界
+	typename Alloc_func = default_alloc,//默认分配器
+	typename Free_func = default_free>//默认释放器
 class AutoExpand_FixLen_MemPool
 {
 	static_assert(szExpandMultiple >= 2);
@@ -99,7 +105,7 @@ private:
 	size_t szMemBlockNum = 0;//内存池中总内存块个数
 	size_t szMemBlockUse = 0;//内存池中使用内存块个数
 private:
-	Node *ConstructorNode(size_t _szMemBlockFixSize, size_t _szMemBlockPreAllocNum, size_t _szArrIdx)
+	Node *ConstructorNode(size_t _szMemBlockFixSize, size_t _szMemBlockPreAllocNum, size_t _szArrIdx) noexcept
 	{
 		Node *pNode = csMemPool.AllocMemBlock();//请求内存
 
@@ -111,7 +117,7 @@ private:
 		return pNode;
 	}
 
-	void DestructorNode(Node *pNode)
+	void DestructorNode(Node *pNode) noexcept
 	{
 		//确保正确析构
 		pNode->csMemPool.~Pool_class();
@@ -120,14 +126,14 @@ private:
 		csMemPool.FreeMemBlock(pNode);//回收内存
 	}
 
-	void SwapFreePool(size_t szLeftIdx, size_t szRightIdx)//交换两个空闲内存池
+	void SwapFreePool(size_t szLeftIdx, size_t szRightIdx) noexcept//交换两个空闲内存池
 	{
 		std::swap(pNodeArrFreePool[szLeftIdx], pNodeArrFreePool[szRightIdx]);
 		pNodeArrFreePool[szLeftIdx]->szArrIdx = szLeftIdx;
 		pNodeArrFreePool[szRightIdx]->szArrIdx = szRightIdx;
 	}
 
-	void MoveFreePool(size_t szTargetIdx, size_t szSourceIdx)
+	void MoveFreePool(size_t szTargetIdx, size_t szSourceIdx) noexcept
 	{
 		if (szTargetIdx != szSourceIdx)
 		{
@@ -137,7 +143,7 @@ private:
 		}
 	}
 
-	size_t BinarySearchSortPool(const void* pFind) const//使用uintptr_t在排序池列表中二分查找，返回第一个内存池基地址不大于pFind的排序池列表的索引（左低右高排序）
+	size_t BinarySearchSortPool(const void* pFind) const noexcept//使用uintptr_t在排序池列表中二分查找，返回第一个内存池基地址不大于pFind的排序池列表的索引（左低右高排序）
 	{
 		size_t szFindBeg = szArrBeg;
 		size_t szFindEnd = szArrEnd;//注意这里End代表尾后索引并且返回值和数组访问无论如何都不会取到它
@@ -164,7 +170,7 @@ private:
 		return szFindBeg;//Beg恰好小于pFind且End恰好大于pFind，因为是内存基地址排序，恰好大于则证明pFind绝对不在End中，必然返回Beg，即便有可能也不在Beg中
 	}
 
-	void AllocAndInsertNodeToArr(size_t szNewPoolBlockNum, bool bInsertHead)//true为头部插入，false为szArrLastSwap插入
+	void AllocAndInsertNodeToArr(size_t szNewPoolBlockNum, bool bInsertHead) noexcept//true为头部插入，false为szArrLastSwap插入
 	{
 		//分配节点
 		size_t szInsertIdx = bInsertHead ? szArrBeg : szArrLastSwap;
@@ -208,7 +214,7 @@ private:
 		++szArrEnd;
 	}
 
-	void RemoveAndFreeNodeFromArr(size_t szSortRemoveIdx)//注意这里的Idx为Sort数组的Idx而不是Free数组的Idx
+	void RemoveAndFreeNodeFromArr(size_t szSortRemoveIdx) noexcept//注意这里的Idx为Sort数组的Idx而不是Free数组的Idx
 	{
 		//先保存待删除指针
 		Node *pRemoveNode = pNodeArrSortPool[szSortRemoveIdx];
@@ -259,6 +265,7 @@ public:
 	}
 
 	AutoExpand_FixLen_MemPool(const AutoExpand_FixLen_MemPool &) = delete;//禁用类拷贝构造
+	AutoExpand_FixLen_MemPool &operator=(const AutoExpand_FixLen_MemPool &) = delete;//禁用复制赋值重载
 
 	AutoExpand_FixLen_MemPool(AutoExpand_FixLen_MemPool &&_Move) noexcept://移动构造
 		szArrEnd(_Move.szArrEnd),
@@ -283,7 +290,7 @@ public:
 		_Move.szMemBlockUse = 0;
 	}
 
-	~AutoExpand_FixLen_MemPool(void)
+	~AutoExpand_FixLen_MemPool(void) noexcept
 	{
 		//依次析构回收内存池	
 		for (size_t i = szArrBeg; i < szArrEnd; ++i)
@@ -454,7 +461,7 @@ public:
 		return false;//不删除
 	}
 
-	template<typename Unary_Predicates = bool (*)(const Pool_class &)>
+	template<typename Unary_Predicates = decltype(default_remove)>
 	size_t RemoveEligibleMemPool(Unary_Predicates upFunc = default_remove)//注意如果这里将节点全部删除，则下次扩容时会出现问题
 	{
 		size_t szRemoveCount = 0;
@@ -485,8 +492,8 @@ public:
 		return false;//不要再遍历了，结束循环
 	}
 
-	template<typename Unary_Predicates = bool (*)(const Pool_class &)>
-	size_t TraverseEligibleMemPool(Unary_Predicates upFunc = default_traverse)
+	template<typename Unary_Predicates = decltype(default_traverse)>
+	size_t TraverseEligibleMemPool(Unary_Predicates upFunc = default_traverse) const noexcept
 	{
 		for (size_t i = szArrBeg; i < szArrEnd; ++i)
 		{
@@ -497,32 +504,32 @@ public:
 		}
 	}
 
-	size_t GetMemBlockFixSize(void) const
+	size_t GetMemBlockFixSize(void) const noexcept
 	{
 		return szMemBlockFixSize;
 	}
 
-	size_t GetMemBlockNum(void) const
+	size_t GetMemBlockNum(void) const noexcept
 	{
 		return szMemBlockNum;
 	}
 
-	size_t GetMemBlockUse(void) const
+	size_t GetMemBlockUse(void) const noexcept
 	{
 		return szMemBlockUse;
 	}
 
-	size_t GetPoolNum(void) const
+	size_t GetPoolNum(void) const noexcept
 	{
 		return szArrEnd;
 	}
 
-	size_t GetFreePoolNum(void) const
+	size_t GetFreePoolNum(void) const noexcept
 	{
 		return szArrLastSwap;
 	}
 
-	size_t GetFullPoolNum(void) const
+	size_t GetFullPoolNum(void) const noexcept
 	{
 		return szArrEnd - szArrLastSwap;
 	}
