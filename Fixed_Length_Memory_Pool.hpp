@@ -1,4 +1,5 @@
 #pragma once
+
 /*
 用位图索引检查待释放内存地址和状态是否正确，用空闲内存栈节点索引内存位图
 也就是内存位图用于检查释放地址是否合法，栈用于存储待分配内存块
@@ -41,31 +42,25 @@ size_t fixed_length：用户初始化时确定的长度
 释放：O(1)
 */
 
-//#include <malloc.h>
 #include <new>
 #include <string.h>
 #include <utility>
 
-
 struct default_alloc
 {
-	void *operator()(size_t szMemSize)
+	void *operator()(size_t szMemSize) const
 	{
-		//return malloc(szMemSize);
 		return new char[szMemSize];
 	}
 };
 
 struct default_free
 {
-	void operator()(void *pMem)
+	void operator()(void *pMem) const noexcept
 	{
-		//return free(pMem);
 		return delete (char *)pMem;
 	}
 };
-
-#define SENTINEL_POINTER ((void *)(NULL + 1))//哨兵指针
 
 template <
 	typename Type,//分配时的返回类型
@@ -90,7 +85,9 @@ private:
 	void *pBaseMem = NULL;//内存基地址(用于后续释放)
 	//size_t szBaseMemSize = 0;//总内存大小
 
+	static constexpr void *SENTINEL_POINTER = (void *)(NULL + 1);//哨兵指针
 protected:
+	//抛出异常的内存分配函数
 	void *ThrowMalloc(size_t szMemSize) const
 	{
 		Alloc_func fAlloc;
@@ -102,27 +99,32 @@ protected:
 		return p;
 	}
 
+	//不抛出异常的内存释放函数
 	void NoThrowFree(void *pMem) const
 	{
 		Free_func fFree;
 		fFree(pMem);
 	}
 
+	//按照模板对齐参数大小到边界
 	static size_t AlignedSize(size_t szSize)
 	{
 		return (szSize + szAlignment - 1) & ~(szAlignment - 1);
 	}
 
+	//按照模板对齐指针地址到边界
 	static void *AlignedMem(void *pMem)
 	{
 		return (void *)(((uintptr_t)pMem + szAlignment - 1) & ~(szAlignment - 1));
 	}
+
 public:
 	using RetPoint_Type = Type;
 	static constexpr size_t szLazyInitExtraRequireSize = bLazyInit * sizeof(*pArrMemBlockStack);//懒惰初始化所需的额外内存
 	static constexpr size_t szManageMemBlockRequireSize = sizeof(*bArrMemBlockBitmap) + sizeof(*pArrMemBlockStack);//管理一个内存块所需的管理内存大小
 	static constexpr size_t szAlignmentSize = szAlignment;//对齐内存的边界
 
+	//构造函数,,第一个参数为定长内存块的大小,默认值是Type的大小,第二个参数是起始内存池预分配的初始内存块个数,默认值是1024
 	FixLen_MemPool(size_t _szMemBlockFixSize = sizeof(Type), size_t _szMemBlockPreAllocNum = 1024) :
 		szMemBlockFixSize(_szMemBlockFixSize),
 		szMemBlockNum(_szMemBlockPreAllocNum)
@@ -145,9 +147,11 @@ public:
 		Reset();
 	}
 
+	//禁用函数
 	FixLen_MemPool(const FixLen_MemPool &) = delete;//禁用类拷贝构造
 	FixLen_MemPool &operator=(const FixLen_MemPool &) = delete;//禁用复制赋值重载
 
+	//移动构造
 	FixLen_MemPool(FixLen_MemPool &&_Move) noexcept ://移动构造
 		szMemBlockFixSize(_Move.szMemBlockFixSize),
 
@@ -177,6 +181,7 @@ public:
 		//_Move.szBaseMemSize = 0;
 	}
 
+	//析构函数
 	~FixLen_MemPool(void) noexcept
 	{
 		szMemBlockFixSize = 0;
@@ -193,6 +198,7 @@ public:
 		//szBaseMemSize = 0;
 	}
 
+	//请求分配一个内存块
 	Type *AllocMemBlock(void) noexcept
 	{
 		if (szStackTop >= szMemBlockNum)//没有空闲内存块了
@@ -223,6 +229,7 @@ public:
 		return (Type *)pFreeMemBlock;
 	}
 
+	//回收已分配的内存块
 	bool FreeMemBlock(Type *pAllocMemBlock) noexcept//释放非内存池分配的内存、多次释放会返回false
 	{
 		if (pAllocMemBlock == NULL)//空指针
@@ -255,7 +262,7 @@ public:
 		return true;
 	}
 
-	//构造并返回对象地址
+	//构造并返回对象
 	template<typename... Args>
 	Type *AllocMemBlockConstructor(Args&&... args) noexcept
 	{
@@ -271,13 +278,14 @@ public:
 		return pFreeMemBlock;
 	}
 
-	//析构并回收对象地址
+	//析构并回收对象
 	bool FreeMemBlockDestructor(Type *pAllocMemBlock) noexcept
 	{
 		pAllocMemBlock->~Type();
 		return FreeMemBlock(pAllocMemBlock);
 	}
 
+	//重置类状态为初始化状态
 	void Reset(void) noexcept
 	{
 		//设置位图为未分配
@@ -307,7 +315,8 @@ public:
 		}
 	}
 
-	long CmpPointAndPool(const void *pMem) const noexcept//返回-1代表小于内存池基地址，返回0代表在内存池中，返回1代表大等于内存池尾部
+	//用于比较指针和内存池关系的函数,返回-1代表小于内存池基地址,返回0代表在内存池中,返回1代表大等于内存池尾部
+	long CmpPointAndPool(const void *pMem) const noexcept
 	{
 		if (pMem < pMemPool)
 		{
@@ -323,26 +332,31 @@ public:
 		}
 	}
 
+	//获取定长内存块的大小
 	size_t GetMemBlockFixSize(void) const noexcept
 	{
 		return szMemBlockFixSize;
 	}
 
+	//获取内存池总共包含的内存块数
 	size_t GetMemBlockNum(void) const noexcept
 	{
 		return szMemBlockNum;
 	}
 
+	//获取内存池总共已用的内存块数
 	size_t GetMemBlockUse(void) const noexcept
 	{
 		return szStackTop;
 	}
 
+	//获取内存池的起始地址(用于排序多个内存池)
 	const void *GetMemPool(void) const noexcept
 	{
 		return pMemPool;
 	}
 
+	//用于计算第一个参数向上舍入对齐到第二个参数代表的数值边界的函数
 	static size_t Aligned(size_t szSize, size_t szAlign)
 	{
 		if (szAlign == 0 || szAlign == 1)
@@ -359,5 +373,3 @@ public:
 		}
 	}
 };
-
-#undef SENTINEL_POINTER

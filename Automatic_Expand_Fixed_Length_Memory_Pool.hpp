@@ -1,8 +1,6 @@
 #pragma once
 #include "Fixed_Length_Memory_Pool.hpp"
 
-//链表扩容法、树扩容法
-
 /*
 封装FixLen_MemPool类，并自动扩容申请新的类实例
 类内有两个数组，一个是空闲内存池，另一个是排序内存池
@@ -30,7 +28,6 @@
 
 不是false，则通过这个索引得到的Node结构中的szArrIdx获得该池在pNodeArrFreePool中的位置，并判断szArrLastSwap和自身位置的关系，如果是szArrLastSwap>szArrIdx，则该池已在空闲区域内，无需调换直接返回true
 否则将自己和szArrLastSwap索引的指针交换，并设置szArrIdx，然后++szArrLastSwap，确保自己被换入空闲区域
-
 */
 
 template <
@@ -105,6 +102,7 @@ private:
 	size_t szMemBlockNum = 0;//内存池中总内存块个数
 	size_t szMemBlockUse = 0;//内存池中使用内存块个数
 private:
+	//构造并返回一个节点，用于构造新的内存池
 	Node *ConstructorNode(size_t _szMemBlockFixSize, size_t _szMemBlockPreAllocNum, size_t _szArrIdx) noexcept
 	{
 		Node *pNode = csMemPool.AllocMemBlock();//请求内存
@@ -117,6 +115,7 @@ private:
 		return pNode;
 	}
 
+	//析构并回收一个节点，用于析构无用内存池
 	void DestructorNode(Node *pNode) noexcept
 	{
 		//确保正确析构
@@ -126,6 +125,7 @@ private:
 		csMemPool.FreeMemBlock(pNode);//回收内存
 	}
 
+	//交换FreePool数组内的两个节点
 	void SwapFreePool(size_t szLeftIdx, size_t szRightIdx) noexcept//交换两个空闲内存池
 	{
 		std::swap(pNodeArrFreePool[szLeftIdx], pNodeArrFreePool[szRightIdx]);
@@ -133,6 +133,7 @@ private:
 		pNodeArrFreePool[szRightIdx]->szArrIdx = szRightIdx;
 	}
 
+	//移动FreePool数组内的一个源节点到目标索引位置
 	void MoveFreePool(size_t szTargetIdx, size_t szSourceIdx) noexcept
 	{
 		if (szTargetIdx != szSourceIdx)
@@ -143,6 +144,7 @@ private:
 		}
 	}
 
+	//在SortPool数组内二分查找指针所属的内存池
 	size_t BinarySearchSortPool(const void *pFind) const noexcept//使用uintptr_t在排序池列表中二分查找，返回第一个内存池基地址不大于pFind的排序池列表的索引（左低右高排序）
 	{
 		size_t szFindBeg = szArrBeg;
@@ -170,6 +172,7 @@ private:
 		return szFindBeg;//Beg恰好小于pFind且End恰好大于pFind，因为是内存基地址排序，恰好大于则证明pFind绝对不在End中，必然返回Beg，即便有可能也不在Beg中
 	}
 
+	//分配新的内存池并插入两个数组
 	void AllocAndInsertNodeToArr(size_t szNewPoolBlockNum, bool bInsertHead) noexcept//true为头部插入，false为szArrLastSwap插入
 	{
 		//分配节点
@@ -214,6 +217,7 @@ private:
 		++szArrEnd;
 	}
 
+	//移除已分配的内存池并从数组中删除
 	void RemoveAndFreeNodeFromArr(size_t szSortRemoveIdx) noexcept//注意这里的Idx为Sort数组的Idx而不是Free数组的Idx
 	{
 		//先保存待删除指针
@@ -251,6 +255,7 @@ private:
 	}
 
 public:
+	//构造函数,第一个参数为定长内存块的大小,默认值是Type的大小,第二个参数是起始内存池预分配的初始内存块个数,默认值是1024
 	AutoExpand_FixLen_MemPool(size_t _szMemBlockFixSize = sizeof(Type), size_t _szMemBlockPreAllocNum = 1024) ://把_szMemBlockPreAllocNum向上舍入到最近的2的指数次方
 		szMemBlockFixSize(_szMemBlockFixSize),
 		szMemBlockNum(Pool_class::Aligned(_szMemBlockPreAllocNum, szAlignBlockNum))
@@ -264,9 +269,11 @@ public:
 		szArrLastSwap = szArrEnd;
 	}
 
+	//禁用函数
 	AutoExpand_FixLen_MemPool(const AutoExpand_FixLen_MemPool &) = delete;//禁用类拷贝构造
 	AutoExpand_FixLen_MemPool &operator=(const AutoExpand_FixLen_MemPool &) = delete;//禁用复制赋值重载
 
+	//移动构造
 	AutoExpand_FixLen_MemPool(AutoExpand_FixLen_MemPool &&_Move) noexcept ://移动构造
 		szArrEnd(_Move.szArrEnd),
 		szArrLastSwap(_Move.szArrLastSwap),
@@ -290,6 +297,7 @@ public:
 		_Move.szMemBlockUse = 0;
 	}
 
+	//析构
 	~AutoExpand_FixLen_MemPool(void) noexcept
 	{
 		//依次析构回收内存池	
@@ -307,6 +315,7 @@ public:
 		szMemBlockUse = 0;
 	}
 
+	//请求分配一个内存块
 	Type *AllocMemBlock(void)
 	{
 		Type *pFreeMemBlock;
@@ -358,6 +367,7 @@ public:
 		return NULL;//卧槽这都能失败？
 	}
 
+	//回收已分配的内存块
 	bool FreeMemBlock(Type *pAllocMemBlock) noexcept
 	{
 		if (pAllocMemBlock == NULL)
@@ -397,6 +407,7 @@ public:
 		return true;
 	}
 
+	//构造并返回对象
 	template<typename... Args>
 	Type *AllocMemBlockConstructor(Args&&... args)
 	{
@@ -412,13 +423,14 @@ public:
 		return pFreeMemBlock;
 	}
 
-	//析构并回收对象地址
+	//析构并回收对象
 	bool FreeMemBlockDestructor(Type *pAllocMemBlock) noexcept
 	{
 		pAllocMemBlock->~Type();
 		return FreeMemBlock(pAllocMemBlock);
 	}
 
+	//按照模板参数指定的扩容倍数扩容一次
 	bool Capacity(void)//按模板倍数扩容1次
 	{
 		if (szArrEnd >= PNODE_ARR_MAX_NUM)
@@ -435,6 +447,7 @@ public:
 		return true;
 	}
 
+	//按照参数指定的内存块数根据模板中的对齐大小分配一个新的内存池
 	bool AddNewMemPool(size_t _szMemBlockPreAllocNum)//按照_szMemBlockPreAllocNum和模板对齐要求新增一个空闲内存池
 	{
 		if (szArrEnd >= PNODE_ARR_MAX_NUM)
@@ -451,7 +464,7 @@ public:
 		return true;
 	}
 
-
+	//示例函数
 	static bool default_remove(const Pool_class &c)
 	{
 		if (c.GetMemBlockUse() == 0 && c.GetMemBlockNum() < 64)
@@ -461,6 +474,7 @@ public:
 		return false;//不删除
 	}
 
+	//移除并析构所有符合一元谓词判断结果的内存池(返回true删除并析构,返回true继续遍历)
 	template<typename Unary_Predicates = decltype(default_remove)>
 	size_t RemoveEligibleMemPool(Unary_Predicates upFunc = default_remove)//注意如果这里将节点全部删除，则下次扩容时会出现问题
 	{
@@ -482,6 +496,7 @@ public:
 		return szRemoveCount;
 	}
 
+	//示例函数
 	static bool default_traverse(const Pool_class &c)
 	{
 		if (c.GetMemBlockUse() != 0)
@@ -492,6 +507,7 @@ public:
 		return false;//不要再遍历了，结束循环
 	}
 
+	//遍历所有符合一元谓词判断结果的内存池(返回true继续遍历,返回false结束遍历)
 	template<typename Unary_Predicates = decltype(default_traverse)>
 	size_t TraverseEligibleMemPool(Unary_Predicates upFunc = default_traverse) const noexcept
 	{
@@ -504,31 +520,37 @@ public:
 		}
 	}
 
+	//获取定长内存块的大小
 	size_t GetMemBlockFixSize(void) const noexcept
 	{
 		return szMemBlockFixSize;
 	}
 
+	//获取所有内存池总共包含的内存块数
 	size_t GetMemBlockNum(void) const noexcept
 	{
 		return szMemBlockNum;
 	}
 
+	//获取所有内存池总共已用的内存块数
 	size_t GetMemBlockUse(void) const noexcept
 	{
 		return szMemBlockUse;
 	}
 
+	//获取所有管理的内存池个数
 	size_t GetPoolNum(void) const noexcept
 	{
 		return szArrEnd;
 	}
 
+	//获取所有管理的内存池中还能分配出内存块的内存池个数
 	size_t GetFreePoolNum(void) const noexcept
 	{
 		return szArrLastSwap;
 	}
 
+	//获取所有管理的内存池中全部分配完内存块的内存池个数
 	size_t GetFullPoolNum(void) const noexcept
 	{
 		return szArrEnd - szArrLastSwap;
