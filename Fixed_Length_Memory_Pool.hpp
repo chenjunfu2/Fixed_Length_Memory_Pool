@@ -73,7 +73,7 @@ template <
 	size_t szAlignment = 4,//内存对齐边界
 	typename Alloc_func = default_alloc,//默认分配器
 	typename Free_func = default_free>//默认释放器
-	class FixLen_MemPool
+class FixLen_MemPool
 {
 	static_assert(szAlignment == 1 || (szAlignment != 0 && szAlignment % 2 == 0));
 private:

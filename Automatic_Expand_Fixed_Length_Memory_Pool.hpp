@@ -40,7 +40,7 @@ template <
 	size_t szAlignBlockNum = 2,//内存池内存块个数对齐的边界
 	typename Alloc_func = default_alloc,//默认分配器
 	typename Free_func = default_free>//默认释放器
-	class AutoExpand_FixLen_MemPool
+class AutoExpand_FixLen_MemPool
 {
 	static_assert(szExpandMultiple >= 2);
 	static_assert(szAlignBlockNum == 1 || (szAlignBlockNum != 0 && szAlignBlockNum % 2 == 0));
