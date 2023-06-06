@@ -307,7 +307,7 @@ public:
 		}
 	}
 
-	long CmpPointAndPool(const void *pMem) const//返回-1代表小于内存池基地址，返回0代表在内存池中，返回1代表大等于内存池尾部
+	long CmpPointAndPool(const void *pMem)  const noexcept//返回-1代表小于内存池基地址，返回0代表在内存池中，返回1代表大等于内存池尾部
 	{
 		if (pMem < pMemPool)
 		{
@@ -323,22 +323,22 @@ public:
 		}
 	}
 
-	size_t GetMemBlockFixSize(void) const
+	size_t GetMemBlockFixSize(void) const noexcept
 	{
 		return szMemBlockFixSize;
 	}
 
-	size_t GetMemBlockNum(void) const
+	size_t GetMemBlockNum(void) const noexcept
 	{
 		return szMemBlockNum;
 	}
 
-	size_t GetMemBlockUse(void) const
+	size_t GetMemBlockUse(void) const noexcept
 	{
 		return szStackTop;
 	}
 
-	const void *GetMemPool(void) const
+	const void *GetMemPool(void) const noexcept
 	{
 		return pMemPool;
 	}
