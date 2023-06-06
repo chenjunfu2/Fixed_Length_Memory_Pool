@@ -73,12 +73,12 @@ template <
 	size_t szAlignment = 4,//内存对齐边界
 	typename Alloc_func = default_alloc,//默认分配器
 	typename Free_func = default_free>//默认释放器
-class FixLen_MemPool
+	class FixLen_MemPool
 {
 	static_assert(szAlignment == 1 || (szAlignment != 0 && szAlignment % 2 == 0));
 private:
 	size_t szMemBlockFixSize = 0;//用户初始化时需要的定长内存长度（size：字节数）
-	
+
 	bool *bArrMemBlockBitmap = NULL;//bool数组内存位图
 	void **pArrMemBlockStack = NULL;//指针数组 栈
 	size_t szStackTop = 0;//栈顶索引（栈生长方向：由高到低），也代表着已使用的内存块数目，即内存池中已分配出去的内存块数
@@ -140,7 +140,7 @@ public:
 		bArrMemBlockBitmap = (bool *)AlignedMem(pBaseMem);
 		pArrMemBlockStack = (void **)((uintptr_t)bArrMemBlockBitmap + szBitMapAlignedSize);
 		pMemPool = (void *)((uintptr_t)pArrMemBlockStack + szStackAlignedSize);
-	
+
 		//初始化内存位图、栈数组
 		Reset();
 	}
@@ -158,13 +158,13 @@ public:
 		pMemPool(_Move.pMemPool),
 		szPoolSize(_Move.szPoolSize),
 		szMemBlockNum(_Move.szMemBlockNum),
-		
+
 		pBaseMem(_Move.pBaseMem)//,
 		//szBaseMemSize(_Move.szBaseMemSize)
 	{
 		//清理移动对象成员
 		_Move.szMemBlockFixSize = 0;
-		
+
 		_Move.bArrMemBlockBitmap = NULL;
 		_Move.pArrMemBlockStack = NULL;
 		_Move.szStackTop = 0;
@@ -188,7 +188,7 @@ public:
 		pMemPool = NULL;
 		szPoolSize = 0;
 		szMemBlockNum = 0;
-		
+
 		NoThrowFree(pBaseMem), pBaseMem = NULL;
 		//szBaseMemSize = 0;
 	}
@@ -307,7 +307,7 @@ public:
 		}
 	}
 
-	long CmpPointAndPool(const void *pMem)  const noexcept//返回-1代表小于内存池基地址，返回0代表在内存池中，返回1代表大等于内存池尾部
+	long CmpPointAndPool(const void *pMem) const noexcept//返回-1代表小于内存池基地址，返回0代表在内存池中，返回1代表大等于内存池尾部
 	{
 		if (pMem < pMemPool)
 		{

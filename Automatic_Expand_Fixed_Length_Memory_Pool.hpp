@@ -40,7 +40,7 @@ template <
 	size_t szAlignBlockNum = 2,//内存池内存块个数对齐的边界
 	typename Alloc_func = default_alloc,//默认分配器
 	typename Free_func = default_free>//默认释放器
-class AutoExpand_FixLen_MemPool
+	class AutoExpand_FixLen_MemPool
 {
 	static_assert(szExpandMultiple >= 2);
 	static_assert(szAlignBlockNum == 1 || (szAlignBlockNum != 0 && szAlignBlockNum % 2 == 0));
@@ -59,13 +59,13 @@ protected:
 			{
 				break;
 			}
-			
+
 			szCumulative += szBlockNum;
 			if (szCumulative < szBlockNum)//溢出
 			{
 				break;
 			}
-			
+
 			szCumulative += sizeof(Pool_class) * szNum;
 			if (szCumulative < sizeof(Pool_class) * szNum)//溢出
 			{
@@ -93,7 +93,7 @@ protected:
 
 private:
 	Node *pNodeArrFreePool[PNODE_ARR_MAX_NUM] = {0};//空闲内存池（szArrLastSwap索引左边，不包括其指代都为空闲内存池，右边，包括其指代都为已满内存池）
-	Node* pNodeArrSortPool[PNODE_ARR_MAX_NUM] = {0};//排序内存池（按内存池地址排序Node，左低右高）
+	Node *pNodeArrSortPool[PNODE_ARR_MAX_NUM] = {0};//排序内存池（按内存池地址排序Node，左低右高）
 
 	static constexpr size_t szArrBeg = 0;//头部索引
 	size_t szArrEnd = 0;//尾后索引
@@ -143,7 +143,7 @@ private:
 		}
 	}
 
-	size_t BinarySearchSortPool(const void* pFind) const noexcept//使用uintptr_t在排序池列表中二分查找，返回第一个内存池基地址不大于pFind的排序池列表的索引（左低右高排序）
+	size_t BinarySearchSortPool(const void *pFind) const noexcept//使用uintptr_t在排序池列表中二分查找，返回第一个内存池基地址不大于pFind的排序池列表的索引（左低右高排序）
 	{
 		size_t szFindBeg = szArrBeg;
 		size_t szFindEnd = szArrEnd;//注意这里End代表尾后索引并且返回值和数组访问无论如何都不会取到它
@@ -267,7 +267,7 @@ public:
 	AutoExpand_FixLen_MemPool(const AutoExpand_FixLen_MemPool &) = delete;//禁用类拷贝构造
 	AutoExpand_FixLen_MemPool &operator=(const AutoExpand_FixLen_MemPool &) = delete;//禁用复制赋值重载
 
-	AutoExpand_FixLen_MemPool(AutoExpand_FixLen_MemPool &&_Move) noexcept://移动构造
+	AutoExpand_FixLen_MemPool(AutoExpand_FixLen_MemPool &&_Move) noexcept ://移动构造
 		szArrEnd(_Move.szArrEnd),
 		szArrLastSwap(_Move.szArrLastSwap),
 
@@ -339,7 +339,7 @@ public:
 		{
 			return NULL;
 		}
-		
+
 		//计算行分配的大小
 		size_t szNewPoolBlockNum = Pool_class::Aligned(szMemBlockNum * szExpandMultiple, szAlignBlockNum) - szMemBlockNum;
 
