@@ -173,6 +173,11 @@ int Example_Automatic_Expand_Fixed_Length_Memory_Pool(void)
 		return true;
 	};
 
+	printInfo("Init");
+	sizeAutoPool.TraverseEligibleMemPool(printEvery);
+	iCur = 0;
+	putchar('\n');
+
 	for (int i = 0; i < 1023; ++i)
 	{
 		sizeAutoPool.AllocMemBlock();//哎呀，泄露了，后续使用谓词手动重置所有管理的类或析构内存池
@@ -216,9 +221,9 @@ int Example_Automatic_Expand_Fixed_Length_Memory_Pool(void)
 	iCur = 0;
 	putchar('\n');
 
-	//通过参数1对齐到预设的字节边界上后扩容一次（注意，手动扩容可能引发问题，导致内存池管理空间提前耗尽）
-	//这个函数的目的在于在使用内存池清理函数之后管理类内部完全不存在内存池时手动添加一个，否则内存池的MemBlockNum为0会导致无法扩容
-	sizeAutoPool.AddNewMemPool(1);
+	//因为上面手动清理了所有内存池，使得类恢复回初始状态，所以手动分配第一个内存池
+	//也可以不分配，后续调用Alloc函数时会自动新建第一个
+	sizeAutoPool.AddFirstMemPool(1);
 	printInfo("AddNew");
 	sizeAutoPool.TraverseEligibleMemPool(printEvery);
 	iCur = 0;

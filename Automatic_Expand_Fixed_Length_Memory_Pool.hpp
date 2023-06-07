@@ -98,6 +98,7 @@ private:
 
 	Manage_Pool csMemPool = Manage_Pool(sizeof(Node), PNODE_ARR_MAX_NUM);//用一个内存池来管理后续的内部分配释放
 
+	size_t szMemBlockPreAllocNum = 0;//用户初始化时指定的预分配大小
 	size_t szMemBlockFixSize = 0;//用户初始化时需要的定长内存长度（size：字节数）
 	size_t szMemBlockNum = 0;//内存池中总内存块个数
 	size_t szMemBlockUse = 0;//内存池中使用内存块个数
@@ -173,21 +174,16 @@ private:
 	}
 
 	//分配新的内存池并插入两个数组
-	void AllocAndInsertNodeToArr(size_t szNewPoolBlockNum, bool bInsertHead) noexcept//true为头部插入，false为szArrLastSwap插入
+	void AllocAndInsertNodeToArr(size_t szNewPoolBlockNum) noexcept
 	{
 		//分配节点
-		size_t szInsertIdx = bInsertHead ? szArrBeg : szArrLastSwap;
-		Node *pInsertNode = ConstructorNode(szMemBlockFixSize, szNewPoolBlockNum, szInsertIdx);//新建内存池，初始化索引
+		Node *pInsertNode = ConstructorNode(szMemBlockFixSize, szNewPoolBlockNum, szArrLastSwap);//新建内存池，初始化索引
 		szMemBlockNum += pInsertNode->csMemPool.GetMemBlockNum();//增加当前总节点的数目
 
-		//插入到szInsertIdx，并将原先头部内存池放到数组尾部
-		MoveFreePool(szArrEnd, szInsertIdx);//因为尾部无有效数据，直接覆盖而无需调换
-		pNodeArrFreePool[szInsertIdx] = pInsertNode;//插入szInsertIdx
-
-		if (bInsertHead == false)
-		{
-			++szArrLastSwap;//移动边界
-		}
+		//插入到szArrLastSwap，并将原先头部内存池放到数组尾部
+		MoveFreePool(szArrEnd, szArrLastSwap);//因为尾部无有效数据，直接覆盖而无需调换
+		pNodeArrFreePool[szArrLastSwap] = pInsertNode;//插入szArrLastSwap
+		++szArrLastSwap;//移动边界
 
 		//注意此处还未插入另一数组，暂时不改变szArrEnd，且此插入过程不影响szArrLastSwap
 
@@ -286,16 +282,8 @@ public:
 	//构造函数,第一个参数为定长内存块的大小,默认值是Type的大小,第二个参数是起始内存池预分配的初始内存块个数,默认值是1024
 	AutoExpand_FixLen_MemPool(size_t _szMemBlockFixSize = sizeof(Type), size_t _szMemBlockPreAllocNum = 1024) ://把_szMemBlockPreAllocNum向上舍入到最近的2的指数次方
 		szMemBlockFixSize(_szMemBlockFixSize),
-		szMemBlockNum(Pool_class::Aligned(_szMemBlockPreAllocNum, szAlignBlockNum))
-	{
-		Node *pNewNode = ConstructorNode(szMemBlockFixSize, szMemBlockNum, szArrEnd);
-
-		pNodeArrFreePool[szArrEnd] = pNewNode;
-		pNodeArrSortPool[szArrEnd] = pNewNode;
-
-		++szArrEnd;
-		szArrLastSwap = szArrEnd;
-	}
+		szMemBlockPreAllocNum(_szMemBlockPreAllocNum)
+	{}
 
 	//禁用函数
 	AutoExpand_FixLen_MemPool(const AutoExpand_FixLen_MemPool &) = delete;//禁用类拷贝构造
@@ -308,6 +296,7 @@ public:
 
 		csMemPool(std::move(_Move.csMemPool)),
 
+		szMemBlockPreAllocNum(_Move.szMemBlockPreAllocNum),
 		szMemBlockFixSize(_Move.szMemBlockFixSize),
 		szMemBlockNum(_Move.szMemBlockNum),
 		szMemBlockUse(_Move.szMemBlockUse)
@@ -320,6 +309,7 @@ public:
 		_Move.szArrEnd = 0;
 		_Move.szArrLastSwap = 0;
 
+		szMemBlockPreAllocNum = 0;
 		_Move.szMemBlockFixSize = 0;
 		_Move.szMemBlockNum = 0;
 		_Move.szMemBlockUse = 0;
@@ -338,6 +328,7 @@ public:
 		szArrEnd = 0;
 		szArrLastSwap = 0;
 
+		szMemBlockPreAllocNum = 0;
 		szMemBlockFixSize = 0;
 		szMemBlockNum = 0;
 		szMemBlockUse = 0;
@@ -351,6 +342,11 @@ public:
 		//循环直到分配成功或无内存池
 		while (true)
 		{
+			if (szArrLastSwap == szArrBeg)//空闲内存池已完全耗尽，没有空闲内存池可供交换
+			{
+				break;
+			}
+
 			pFreeMemBlock = pNodeArrFreePool[szArrBeg]->csMemPool.AllocMemBlock();
 			if (pFreeMemBlock != NULL)
 			{
@@ -359,29 +355,19 @@ public:
 				return pFreeMemBlock;
 			}
 
-			//如果运行到此代表这个内存池空间已耗尽
-			if (szArrLastSwap <= 1)//已经没有空闲内存池可供交换
-			{
-				break;
-			}
-
-			//定位到下一个空闲内存池
+			//分配失败，定位到下一个空闲内存池
 			--szArrLastSwap;
 			//交换
 			SwapFreePool(szArrBeg, szArrLastSwap);
 		}
 
 		//运行到此则代表没有可用空闲内存池了，动态分配一个
-		if (szArrEnd >= PNODE_ARR_MAX_NUM)//静态数组满，不能分配
+
+		//扩容一次
+		if (Capacity() == false)
 		{
-			return NULL;
+			return NULL;//无法扩容，那没辙了
 		}
-
-		//计算行分配的大小
-		size_t szNewPoolBlockNum = Pool_class::Aligned(szMemBlockNum * szExpandMultiple, szAlignBlockNum) - szMemBlockNum;
-
-		//分配并插入到数组
-		AllocAndInsertNodeToArr(szNewPoolBlockNum, true);
 
 		//操作完毕，重分配内存
 		pFreeMemBlock = pNodeArrFreePool[szArrBeg]->csMemPool.AllocMemBlock();
@@ -461,38 +447,53 @@ public:
 	//按照模板参数指定的扩容倍数扩容一次
 	bool Capacity(void)//按模板倍数扩容1次
 	{
-		if (szArrEnd >= PNODE_ARR_MAX_NUM)
+		if (szArrEnd >= PNODE_ARR_MAX_NUM)//静态数组满，不能分配
 		{
-			return false;//数组已满
+			return false;
 		}
 
 		//分配内存
-		size_t szNewPoolBlockNum = Pool_class::Aligned(szMemBlockNum * szExpandMultiple, szAlignBlockNum) - szMemBlockNum;//计算对齐
+		if (szMemBlockNum != 0)//不为0，直接通过其扩容
+		{
+			size_t szNewPoolBlockNum = Pool_class::Aligned(szMemBlockNum * szExpandMultiple, szAlignBlockNum) - szMemBlockNum;//计算对齐
+			//分配并插入到数组
+			AllocAndInsertNodeToArr(szNewPoolBlockNum);
 
-		//插入空闲区
-		AllocAndInsertNodeToArr(szNewPoolBlockNum, false);
-
-		return true;
+			return true;
+		}
+		else//为0，通过用户构造时的预设创建第一个内存池
+		{
+			return AddFirstMemPool(szMemBlockPreAllocNum);
+		}
 	}
 
 	//按照参数指定的内存块数根据模板中的对齐大小分配一个新的内存池
-	bool AddNewMemPool(size_t _szMemBlockPreAllocNum)//按照_szMemBlockPreAllocNum和模板对齐要求新增一个空闲内存池
+	bool AddFirstMemPool(size_t _szMemBlockPreAllocNum)//按照_szMemBlockPreAllocNum和模板对齐要求新增一个空闲内存池
 	{
-		if (szArrEnd >= PNODE_ARR_MAX_NUM)
+		if (szArrBeg != szArrEnd)
 		{
-			return false;//数组已满
+			return false;//不是第一个
 		}
 
+		//计算对齐
+		size_t szFirstPoolBlockNum = Pool_class::Aligned(_szMemBlockPreAllocNum, szAlignBlockNum);
 		//分配内存
-		size_t szNewPoolBlockNum = Pool_class::Aligned(_szMemBlockPreAllocNum, szAlignBlockNum);//计算对齐
+		Node *pNewNode = ConstructorNode(szMemBlockFixSize, szFirstPoolBlockNum, szArrBeg);
+		//增加计数
+		szMemBlockNum += pNewNode->csMemPool.GetMemBlockNum();
 
-		//插入空闲区
-		AllocAndInsertNodeToArr(szNewPoolBlockNum, false);
+		//插入头部
+		pNodeArrFreePool[szArrBeg] = pNewNode;
+		pNodeArrSortPool[szArrBeg] = pNewNode;
+
+		//设置成员
+		++szArrEnd;
+		szArrLastSwap = szArrEnd;
 
 		return true;
 	}
 
-	using UP_FUNC = bool (*)(const Pool_class &c);
+	using Up_Func = bool (*)(const Pool_class &c);
 
 	//示例函数
 	static bool default_remove(const Pool_class &c)
@@ -505,7 +506,7 @@ public:
 	}
 
 	//移除并析构所有符合一元谓词判断结果的内存池(返回true删除并析构,返回true继续遍历)
-	template<typename Unary_Predicates = UP_FUNC>
+	template<typename Unary_Predicates = Up_Func>
 	size_t RemoveEligibleMemPool(Unary_Predicates upFunc = default_remove) noexcept//注意如果这里将节点全部删除，则下次扩容时会出现问题
 	{
 		size_t szRemoveCount = 0;
@@ -537,7 +538,7 @@ public:
 	}
 
 	//重置所有符合一元谓词判断结果的内存池(返回true重置,返回true继续遍历)
-	template<typename Unary_Predicates = UP_FUNC>
+	template<typename Unary_Predicates = Up_Func>
 	size_t ResetEligibleMemPool(Unary_Predicates upFunc = default_reset) noexcept//注意如果这里将节点全部删除，则下次扩容时会出现问题
 	{
 		size_t szResetCount = 0;
@@ -566,7 +567,7 @@ public:
 	}
 
 	//遍历所有符合一元谓词判断结果的内存池(返回true继续遍历,返回false结束遍历)
-	template<typename Unary_Predicates = UP_FUNC>
+	template<typename Unary_Predicates = Up_Func>
 	size_t TraverseEligibleMemPool(Unary_Predicates upFunc = default_traverse) const noexcept
 	{
 		size_t i;
@@ -614,7 +615,7 @@ public:
 		}
 
 		Pool_class &csTemp = pNodeArrFreePool[szArrBeg]->csMemPool;
-		bool bFull = csTemp.GetMemBlockUse() == csTemp.GetMemBlockNum();
+		bool bFull = csTemp.GetMemBlockUse() == csTemp.GetMemBlockNum() && szArrLastSwap != szArrBeg;
 		return szArrLastSwap - bFull;
 	}
 
@@ -627,7 +628,7 @@ public:
 		}
 
 		Pool_class &csTemp = pNodeArrFreePool[szArrBeg]->csMemPool;
-		bool bFull = csTemp.GetMemBlockUse() == csTemp.GetMemBlockNum();
+		bool bFull = csTemp.GetMemBlockUse() == csTemp.GetMemBlockNum() && szArrLastSwap != szArrBeg;
 		return szArrEnd - szArrLastSwap + bFull;
 	}
 };

@@ -129,6 +129,17 @@ public:
 		szMemBlockFixSize(_szMemBlockFixSize),
 		szMemBlockNum(_szMemBlockPreAllocNum)
 	{
+		//确保用户传入错误参数时不要构造失败
+		if (szMemBlockFixSize == 0)
+		{
+			szMemBlockFixSize = 1;
+		}
+
+		if (szMemBlockNum == 0)
+		{
+			szMemBlockNum = 1;
+		}
+
 		//位图、栈、内存池的起始地址全部对齐到szAlignment
 		size_t szBitMapAlignedSize = AlignedSize(szMemBlockNum * sizeof(*bArrMemBlockBitmap));//从上一个对齐地址加上这个数值就是下一个对齐地址的开始，下同
 		size_t szStackAlignedSize = AlignedSize((szMemBlockNum + bLazyInit) * sizeof(*pArrMemBlockStack));//此处+bLazyInit确保懒惰初始化多分配一个栈空间
