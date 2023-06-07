@@ -1,40 +1,246 @@
-# å®šé•¿å†…å­˜å¿«é€Ÿåˆ†é…å™¨  
+# ¶¨³¤ÄÚ´æ¿ìËÙ·ÖÅäÆ÷  
   
-## ä»‹ç»ï¼š  
-**Fixed_Length_Memory_Pool**ï¼š  
-ä¸€ä¸ªç”¨äºåˆ†é…å®šé•¿å†…å­˜çš„å†…å­˜æ± ï¼Œä¸å¯æ‰©å®¹  
-åˆ†é…è€—æ—¶ï¼šå›ºå®šO(1)  
-é‡Šæ”¾è€—æ—¶ï¼šå›ºå®šO(1)  
+## ½éÉÜ£º  
+**Fixed_Length_Memory_Pool**£º  
+Ò»¸öÓÃÓÚ·ÖÅä¶¨³¤ÄÚ´æµÄÄÚ´æ³Ø£¬²»¿ÉÀ©Èİ  
+·ÖÅäºÄÊ±£º¹Ì¶¨O(1)  
+ÊÍ·ÅºÄÊ±£º¹Ì¶¨O(1)  
   
-**Automatic_Expand_Fixed_Length_Memory_Pool**ï¼š  
-ä¸ä¸Šé¢ç›¸æ¯”ï¼Œå®ƒå¤šäº†æ‰©å®¹æœºåˆ¶ï¼Œæ˜¯ä¸€ä¸ªç”¨äºç®¡ç†ä¸Šé¢å†…å­˜æ± çš„ç®¡ç†å™¨  
-åˆ†é…è€—æ—¶ï¼šæœ€å·®O(log n)ï¼ˆä¿è¯n<64ï¼‰ï¼ˆmæ¬¡åˆ†é…å†…O(1)ï¼Œmæ¬¡åˆ†é…æ—¶O(log n)ï¼Œm\*=æ‰©å®¹å€æ•°ï¼Œmèµ·å§‹å€¼ä¸ºç”¨æˆ·æŒ‡å®šï¼Œä¾æ­¤å¾ªç¯ï¼Œæ‰©å®¹æ¬¡æ•°ä¸ºnï¼‰  
-é‡Šæ”¾è€—æ—¶ï¼šå›ºå®šO(log n)ï¼ˆä¿è¯n<64ï¼‰ï¼ˆè¿™é‡Œçš„nä¸ä¸Šé¢ç›¸åŒï¼‰  
+**Automatic_Expand_Fixed_Length_Memory_Pool**£º  
+ÓëÉÏÃæÏà±È£¬Ëü¶àÁËÀ©Èİ»úÖÆ£¬ÊÇÒ»¸öÓÃÓÚ¹ÜÀíÉÏÃæÄÚ´æ³ØµÄ¹ÜÀíÆ÷  
+·ÖÅäºÄÊ±£º×î²îO(log n)£¨±£Ö¤n<64£©£¨m´Î·ÖÅäÄÚO(1)£¬m´Î·ÖÅäÊ±O(log n)£¬m\*=À©Èİ±¶Êı£¬mÆğÊ¼ÖµÎªÓÃ»§Ö¸¶¨£¬ÒÀ´ËÑ­»·£¬À©Èİ´ÎÊıÎªn£©  
+ÊÍ·ÅºÄÊ±£º¹Ì¶¨O(log n)£¨±£Ö¤n<64£©£¨ÕâÀïµÄnÓëÉÏÃæÏàÍ¬£©  
   
-## åœºæ™¯ï¼š  
-è¿™ä¸¤ä¸ªå†…å­˜æ± éƒ½æ˜¯åœ¨å¤§é‡å®šé•¿å†…å­˜åœºæ™¯ä¸‹ä¼˜åŒ–åˆ†é…å’Œé‡Šæ”¾é€Ÿåº¦ï¼Œå¦‚**é“¾è¡¨ã€é˜Ÿåˆ—èŠ‚ç‚¹**ï¼Œ**æ ‘ã€å›¾èŠ‚ç‚¹**ï¼Œ**å“ˆå¸ŒèŠ‚ç‚¹**ç­‰çš„åˆ†é…ä¸é‡Šæ”¾  
+## ³¡¾°£º  
+ÕâÁ½¸öÄÚ´æ³Ø¶¼ÊÇÔÚ´óÁ¿¶¨³¤ÄÚ´æ³¡¾°ÏÂÓÅ»¯·ÖÅäºÍÊÍ·ÅËÙ¶È£¬Èç**Á´±í¡¢¶ÓÁĞ½Úµã**£¬**Ê÷¡¢Í¼½Úµã**£¬**¹şÏ£½Úµã**µÈµÄ·ÖÅäÓëÊÍ·Å  
   
-## ä¼˜åŒ–ï¼š  
-è¿™ä¸¤ä¸ªå†…å­˜æ± éƒ½æ˜¯é€šè¿‡å‡å°‘å¯¹ç³»ç»Ÿåˆ†é…é‡Šæ”¾å‡½æ•°çš„è°ƒç”¨ï¼Œå¹¶ä½¿ç”¨ç®€å•çš„è°ƒåº¦ç®—æ³•å’Œæ£€æŸ¥ä»£ç ï¼Œæ¥å‡å°‘å†…å­˜åˆ†é…é‡Šæ”¾çš„å¼€é”€  
+## ÓÅ»¯£º  
+ÕâÁ½¸öÄÚ´æ³Ø¶¼ÊÇÍ¨¹ı¼õÉÙ¶ÔÏµÍ³·ÖÅäÊÍ·Åº¯ÊıµÄµ÷ÓÃ£¬²¢Ê¹ÓÃ¼òµ¥µÄµ÷¶ÈËã·¨ºÍ¼ì²é´úÂë£¬À´¼õÉÙÄÚ´æ·ÖÅäÊÍ·ÅµÄ¿ªÏú  
   
-## åŸç†ï¼š  
-**Fixed_Length_Memory_Pool**ï¼š  
-è¿™ä¸ªå†…å­˜æ± åœ¨åˆå§‹åŒ–æ—¶æŒ‰ç…§æŒ‡å®šçš„å•ä¸ªå—å¤§å°å’Œæ€»å—æ•°æ¥é¢„åˆ†é…å†…å­˜å¹¶æŒ‰å›ºå®šå¤§å°åˆ‡åˆ†ï¼Œ  
-åˆ†é…æ—¶ä»æ ˆä¸­å¼¹å‡ºè¿”å›ç»™ç”¨æˆ·ï¼Œé‡Šæ”¾æ—¶æ£€æŸ¥å¹¶å›æ”¶å…¥æ ˆï¼Œåœ¨å…¶ç”Ÿå‘½å‘¨æœŸå†…ï¼Œç®¡ç†çš„å†…å­˜å—å¤§å°ä¸å˜  
+## Ô­Àí£º  
+**Fixed_Length_Memory_Pool**£º  
+Õâ¸öÄÚ´æ³ØÔÚ³õÊ¼»¯Ê±°´ÕÕÖ¸¶¨µÄµ¥¸ö¿é´óĞ¡ºÍ×Ü¿éÊıÀ´Ô¤·ÖÅäÄÚ´æ²¢°´¹Ì¶¨´óĞ¡ÇĞ·Ö£¬  
+·ÖÅäÊ±´ÓÕ»ÖĞµ¯³ö·µ»Ø¸øÓÃ»§£¬ÊÍ·ÅÊ±¼ì²é²¢»ØÊÕÈëÕ»£¬ÔÚÆäÉúÃüÖÜÆÚÄÚ£¬¹ÜÀíµÄÄÚ´æ¿é´óĞ¡²»±ä  
   
-**Automatic_Expand_Fixed_Length_Memory_Pool**ï¼š  
-è¿™ä¸ªè‡ªåŠ¨æ‰©å®¹å†…å­˜æ± ä¾èµ–å¹¶ç®¡ç†ä¸Šé¢çš„å®šé•¿å†…å­˜æ± ï¼Œä½¿å…¶ç»„æˆå†…å­˜æ± é˜µåˆ—ï¼Œé€šè¿‡ç”¨æˆ·è®¾ç½®çš„é¢„åˆ†é…é¡¹æ¥æ„é€ ç¬¬ä¸€ä¸ªå†…å­˜æ± ï¼Œ  
-åˆ†é…æ—¶é€šè¿‡å‘å…¶ç®¡ç†çš„å†…å­˜æ± é˜µåˆ—ä¸­çš„ç©ºé—²æ± ï¼Œè¯·æ±‚å†…å­˜è¿”å›ç»™ç”¨æˆ·ï¼Œå¹¶åœ¨æ± å†…å­˜ç”¨å°½åè‡ªåŠ¨æ„é€ ä¸€ä¸ªæ–°æ± æ‰©å®¹ï¼Œ  
-é‡Šæ”¾æ—¶é€šè¿‡äºŒåˆ†æŸ¥æ‰¾åœ¨å†…å­˜æ± é˜µåˆ—ä¸­æ‰¾åˆ°å¯¹åº”é‡Šæ”¾æŒ‡é’ˆçš„åœ°å€æ‰€å±å†…å­˜æ± ï¼Œå¹¶äº¤ç”±å…¶æ£€æŸ¥æŒ‡é’ˆåˆæ³•æ€§åå›æ”¶ï¼Œ  
-åœ¨å…¶ç”Ÿå‘½å‘¨æœŸå†…ï¼Œç®¡ç†çš„æ€»å†…å­˜æ± æ•°ä¼šå˜åŒ–  
+**Automatic_Expand_Fixed_Length_Memory_Pool**£º  
+Õâ¸ö×Ô¶¯À©ÈİÄÚ´æ³ØÒÀÀµ²¢¹ÜÀíÉÏÃæµÄ¶¨³¤ÄÚ´æ³Ø£¬Ê¹Æä×é³ÉÄÚ´æ³ØÕóÁĞ£¬Í¨¹ıÓÃ»§ÉèÖÃµÄÔ¤·ÖÅäÏîÀ´¹¹ÔìµÚÒ»¸öÄÚ´æ³Ø£¬  
+·ÖÅäÊ±Í¨¹ıÏòÆä¹ÜÀíµÄÄÚ´æ³ØÕóÁĞÖĞµÄ¿ÕÏĞ³Ø£¬ÇëÇóÄÚ´æ·µ»Ø¸øÓÃ»§£¬²¢ÔÚ³ØÄÚ´æÓÃ¾¡ºó×Ô¶¯¹¹ÔìÒ»¸öĞÂ³ØÀ©Èİ£¬  
+ÊÍ·ÅÊ±Í¨¹ı¶ş·Ö²éÕÒÔÚÄÚ´æ³ØÕóÁĞÖĞÕÒµ½¶ÔÓ¦ÊÍ·ÅÖ¸ÕëµÄµØÖ·ËùÊôÄÚ´æ³Ø£¬²¢½»ÓÉÆä¼ì²éÖ¸ÕëºÏ·¨ĞÔºó»ØÊÕ£¬  
+ÔÚÆäÉúÃüÖÜÆÚÄÚ£¬¹ÜÀíµÄ×ÜÄÚ´æ³ØÊı»á±ä»¯  
 
-## ä½¿ç”¨ï¼š  
-**Fixed_Length_Memory_Pool**ï¼š  
+## Ê¹ÓÃ£º  
+**Fixed_Length_Memory_Pool**£º  
 ```cpp
-FixLen_MemPool<void>
+struct Link_Node//Ê¾ÀıÁ´±í½Úµã
+{
+	int iData;
+	Link_Node *pNext;
+};
+
+struct Test//Ê¾Àı½Úµã
+{
+	char c;
+};
+
+//¹¹Ôì¶¨³¤ÄÚ´æ³Ø
+
+//·ÖÅäÊ±·µ»Øvoid* ×¢ÒâÊ¹ÓÃvoidÊ±ÎŞ·¨Ä¬ÈÏ´«Èësizeof(void)²ÎÊı£¬ĞèÒªÊÖ¶¯´«µİÄÚ´æ¿é´óĞ¡
+FixLen_MemPool<void> pPool(16);
+
+//·ÖÅäÊ±·µ»Ølong*
+FixLen_MemPool<long> longPool;
+
+//·ÖÅäÊ±·µ»ØLink_Node*
+FixLen_MemPool<Link_Node> linkPool;
+
+//·ÖÅäÊ±·µ»ØTest* ÕâÀïsizeof(Test)==1£¬ÄÚ´æÃ»ÓĞ¶ÔÆë»áµ¼ÖÂºóĞø·ÃÎÊËÙ¶È±äÂı£¬¿ÉÒÔÊÖ¶¯´«ÈëÖ¸¶¨´óĞ¡À´Ç¿ÖÆ¶ÔÆë
+//ÔÚÄ£°åÄÚÖ¸¶¨ÁËÀÁ¶è³õÊ¼»¯ºÍÄÚ´æ³ØÆğÊ¼µØÖ·£¨Ò²¾ÍÊÇµÚÒ»¸ö·ÖÅäµÄÄÚ´æ¿é£©¶ÔÆëµ½8×Ö½Ú±ß½ç
+size_t szAlignedSize = FixLen_MemPool<Test>::Aligned(sizeof(Test), 8);//Ê¹ÓÃÁË¾²Ì¬º¯ÊıAligned¼ÆËãÄÚ´æ¶ÔÆë
+FixLen_MemPool<Test, true, 8> testPool(szAlignedSize);//ÕâÑùÊµ¼Ê·ÖÅäµÄÄÚ´æÊÇ8×Ö½Ú£¬Ê¹ÓÃ1×Ö½Ú£¬Ê£Óà7×Ö½ÚÓÃÓÚ¶ÔÆë£¬Í¬Ê±Ä£°åÖ¸¶¨µÚÒ»¸öÄÚ´æ¿éµÄÆğÊ¼µØÖ·ÊÇ¶ÔÆë8×Ö½Ú±ß½çµÄ
+
+//Ê¹ÓÃ¶¨³¤ÄÚ´æ³Ø
+
+puts("void:");
+//void*
+void *pTemp = pPool.AllocMemBlock();//ÇëÇóÒ»¸öÄÚ´æ¿é
+size_t szpFixSize = pPool.GetMemBlockFixSize();//»ñÈ¡·ÖÅäÊ±Ö¸¶¨µÄ¶¨³¤¿é´óĞ¡£¬ÒÔ×Ö½ÚÎªµ¥Î»
+memset(pTemp, 0xCF, szpFixSize);//Ê¹ÓÃÄÚ´æ¿é...
+pPool.FreeMemBlock(pTemp);//ÊÍ·ÅÄÚ´æ¿é
+
+size_t szpUse = pPool.GetMemBlockUse();
+printf("use:%zu\n", szpUse);//Ô¤ÆÚÕâÀïÓ¦¸Ã´òÓ¡³öuse:0
+
+puts("\nlong:");
+//long*
+long *lArr[16];
+for (int i = 0; i < 16; ++i)
+{
+	lArr[i] = longPool.AllocMemBlock();//ÇëÇóÒ»Ğ©ÄÚ´æ¿é
+}
+
+size_t szlUse = longPool.GetMemBlockUse();//»ñÈ¡Ê¹ÓÃÇé¿ö
+printf("use:%zu\n", szlUse);//Ô¤ÆÚÕâÀïÓ¦¸Ã´òÓ¡³öuse:16
+
+puts("\nLink_Node:");
+//Link_Node*
+Link_Node *pHead = NULL;
+
+//²åÈëº¯Êı
+auto InsertHead = [&](int iData) -> void
+{
+	Link_Node *pNewNode = linkPool.AllocMemBlockConstructor(Link_Node(iData, pHead));//·ÖÅäÄÚ´æ²¢¹¹Ôì
+
+	pHead = pNewNode;//½ÓÈëÁ´±í
+
+	printf("insert head:%d\n", iData);
+};
+
+//ÒÆ³ıº¯Êı
+auto RemoveHead = [&](void) -> int
+{
+	if (pHead == NULL)
+	{
+		return -1;
+	}
+
+	Link_Node *pRemoveNode = pHead;
+	pHead = pHead->pNext;//ÒÆ³öÁ´±í
+	int rData = pRemoveNode->iData;//±£´ædata
+
+	linkPool.FreeMemBlockDestructor(pRemoveNode);//ÊÍ·ÅÄÚ´æ²¢Îö¹¹
+
+	printf("remove head:%d\n", rData);
+	return rData;
+};
+
+//Á´±íµÄ²åÈëºÍÒÆ³ı
+puts("Insert:");
+InsertHead(16);
+for (int i = 0; i < 9; ++i)
+{
+	InsertHead(i);
+}
+
+puts("Remove:");
+RemoveHead();
+
+puts("Insert:");
+InsertHead(32);
+
+puts("RemoveAll:");
+while (RemoveHead() != -1)
+{
+	continue;
+}
+
+puts("\nTest:");
+//·ÖÅäÊ±·µ»ØTest*
+for (int i = 0; i < testPool.GetMemBlockNum(); ++i)//È«²¿·ÖÅäÍê
+{
+	testPool.AllocMemBlock();//°¥Ñ½£¬Ğ¹Â¶ÁË£¬¿ÉÒÔÊÖ¶¯ÖØÖÃÀà»ØÊÕËùÓĞÒÑ·ÖÅäÖ¸Õë
+}
+
+const char *cp = testPool.GetMemBlockUse() == testPool.GetMemBlockNum() ? "true" : "false";
+printf("use all:%s\n", cp);//Ô¤ÆÚÕâÀïÓ¦¸Ã´òÓ¡³öuse all:true
+
+testPool.Reset();//Ö±½ÓÖØÖÃÕû¸öÀà£¬»Øµ½³õÊ¼×´Ì¬
+
+cp = testPool.GetMemBlockUse() == testPool.GetMemBlockNum() ? "true" : "false";
+printf("now\nuse all:%s\n", cp);//Ô¤ÆÚÕâÀïÓ¦¸Ã´òÓ¡³öuse all:false
+
+puts("\nsize_t:");
+//·ÖÅäÊ±·µ»Øsize_t*
+//ÒÆ¶¯¹¹Ôì
+auto MoveFunc = [](void)
+{
+	//·ÖÅäÊ±·µ»Øsize_t* ÕâÀïÊÖ¶¯Ö¸¶¨ÁË³õÊ¼ÄÚ´æ¿é¸öÊıÎª2048¶ø²»ÊÇÄ¬ÈÏµÄ1024
+	return FixLen_MemPool<size_t>(sizeof(size_t), 2048);
+};
+
+auto sizePool = MoveFunc();
+sizePool.AllocMemBlock();//°¥Ñ½£¬Ğ¹Â¶ÁË£¬Ğ¹Â¶µÄÖ¸ÕëÔÚÀàÎö¹¹ºó»á±»»ØÊÕ£¬ÎŞĞèµ£ĞÄ
+
+size_t szBlockNum = sizePool.GetMemBlockNum();
+printf("block num:%zu\n", szBlockNum);//Ô¤¼Æ´òÓ¡³öblock num:2048
 ```
 
-**Automatic_Expand_Fixed_Length_Memory_Pool**ï¼š  
+**Automatic_Expand_Fixed_Length_Memory_Pool**£º  
 ```cpp
-AutoExpand_FixLen_MemPool<FixLen_MemPool<void>>
+//×Ô¶¯À©ÈİÀà³õÊ¼»¯²ÎÊı¡¢Ê¹ÓÃ·½Ê½Óë¶¨³¤³ØÀàÒ»ÖÂ£¬³ıÁËÄ£°åºÍ²¿·ÖĞÂÔö³ÉÔ±º¯Êı
+using Pool = FixLen_MemPool<size_t>;
+
+//Ä£°åµÚÒ»¸ö²ÎÊıĞèÒª½ÓÊÜÒ»¸öFixLen_MemPoolÀàĞÍ£¬Õâ¸öÀà¹ÜÀíÄ£°åµÚÒ»¸ö²ÎÊıÖ¸¶¨µÄÄÚ´æ³Ø
+//Ä£°å²ÎÊıPool±íÃ÷Ã¿´Î´´½¨µÄÄÚ´æ³ØÀàÎªPool£¬2±íÃ÷Ã¿´ÎÀ©Èİ¶¼ÒÔµ±Ç°´óĞ¡³ËÒÔ2±¶À©Èİ£¬4±íÃ÷Ã¿´ÎÀ©ÈİºóµÄ´óĞ¡¶¼¶ÔÆëµ½4×Ö½Ú±ß½çÉÏ
+AutoExpand_FixLen_MemPool<Pool, 2, 4> sizeAutoPool(sizeof(size_t), 8);//Ö¸¶¨¹ÜÀíµÄµÚÒ»¸öÄÚ´æ³Ø°üº¬8¸öÄÚ´æ¿é
+
+auto printInfo = [&](const char *p) -> void
+{
+	printf("%s\n", p);
+	printf("use:%zu\n", sizeAutoPool.GetMemBlockUse());//»ñÈ¡Ê¹ÓÃÊı
+	printf("all:%zu\n", sizeAutoPool.GetMemBlockNum());//»ñÈ¡×ÜÄÚ´æ¿éÊı
+
+	printf("pool num:%zu\n", sizeAutoPool.GetPoolNum());//»ñÈ¡×ÜÄÚ´æ³ØÊı
+	printf("free pool:%zu\n", sizeAutoPool.GetFreePoolNum());//»ñÈ¡¿ÕÏĞÄÚ´æ³ØÊı
+	printf("full pool:%zu\n", sizeAutoPool.GetFullPoolNum());//»ñÈ¡ÂúÄÚ´æ³ØÊı
+};
+
+int iCur = 0;
+auto printEvery = [&](const Pool &c) -> bool
+{
+	printf("Cur:%d ", iCur++);
+	printf("use:%zu,all:%zu\n", c.GetMemBlockUse(), c.GetMemBlockNum());
+
+	return true;
+};
+
+for (int i = 0; i < 1023; ++i)
+{
+	sizeAutoPool.AllocMemBlock();//°¥Ñ½£¬Ğ¹Â¶ÁË£¬ºóĞøÊ¹ÓÃÎ½´ÊÊÖ¶¯ÖØÖÃËùÓĞ¹ÜÀíµÄÀà»òÎö¹¹ÄÚ´æ³Ø
+}
+
+printInfo("Alloc");
+sizeAutoPool.TraverseEligibleMemPool(printEvery);
+iCur = 0;
+putchar('\n');
+
+sizeAutoPool.Capacity();//°´ÕÕÄ£°åÔ¤ÉèÊÖ¶¯À©ÈİÒ»´Î
+
+printInfo("Capacity");
+sizeAutoPool.TraverseEligibleMemPool(printEvery);
+iCur = 0;
+putchar('\n');
+
+auto ResetUse = [&](const Pool &c) -> bool
+{
+	return c.GetMemBlockUse() != 0;//ÖØÖÃ
+};
+
+sizeAutoPool.ResetEligibleMemPool(ResetUse);
+printInfo("ResetAll");
+sizeAutoPool.TraverseEligibleMemPool(printEvery);
+iCur = 0;
+putchar('\n');
+
+auto clearFunc = [](const Pool &c) -> bool//ÇåÀíÄÚ´æ³ØµÄº¯Êı
+{
+	if (c.GetMemBlockUse() == 0)//Ö»ÒªÃ»Ê¹ÓÃ£¬¾ÍÎö¹¹
+	{
+		return true;//É¾³ı
+	}
+	return false;
+};
+
+sizeAutoPool.RemoveEligibleMemPool(clearFunc);
+printInfo("RemoveAll");
+sizeAutoPool.TraverseEligibleMemPool(printEvery);
+iCur = 0;
+putchar('\n');
+
+//Í¨¹ı²ÎÊı1¶ÔÆëµ½Ô¤ÉèµÄ×Ö½Ú±ß½çÉÏºóÀ©ÈİÒ»´Î£¨×¢Òâ£¬ÊÖ¶¯À©Èİ¿ÉÄÜÒı·¢ÎÊÌâ£¬µ¼ÖÂÄÚ´æ³Ø¹ÜÀí¿Õ¼äÌáÇ°ºÄ¾¡£©
+//Õâ¸öº¯ÊıµÄÄ¿µÄÔÚÓÚÔÚÊ¹ÓÃÄÚ´æ³ØÇåÀíº¯ÊıÖ®ºó¹ÜÀíÀàÄÚ²¿ÍêÈ«²»´æÔÚÄÚ´æ³ØÊ±ÊÖ¶¯Ìí¼ÓÒ»¸ö£¬·ñÔòÄÚ´æ³ØµÄMemBlockNumÎª0»áµ¼ÖÂÎŞ·¨À©Èİ
+sizeAutoPool.AddNewMemPool(1);
+printInfo("AddNew");
+sizeAutoPool.TraverseEligibleMemPool(printEvery);
+iCur = 0;
+putchar('\n');
 ```
