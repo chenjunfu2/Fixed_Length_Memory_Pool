@@ -67,7 +67,8 @@ template <
 	bool bLazyInit = false,//懒惰初始化策略（此策略会修改代码段，所以使用模板 & constexpr if）
 	size_t szAlignment = 4,//内存对齐边界
 	typename Alloc_func = default_alloc,//默认分配器
-	typename Free_func = default_free>//默认释放器
+	typename Free_func = default_free//默认释放器
+>
 class FixLen_MemPool
 {
 	static_assert(szAlignment == 1 || (szAlignment != 0 && szAlignment % 2 == 0));

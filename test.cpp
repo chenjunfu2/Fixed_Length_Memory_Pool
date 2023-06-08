@@ -335,3 +335,184 @@ int test_3(void)
 
 	return 0;
 }
+
+#include <algorithm>
+#include <random>
+
+#undef SIZE
+#define SIZE BLOCK_SIZE//内存单元大小
+#define NUM 65536//内存操作次数
+
+#define MEDIUM 10240 //随机数均值
+#define OFFSET 5120 //随机数偏移
+
+#define MIN 512 //随机数最小值
+#define MAX INT_MAX/4//随机数最大值
+
+clock_t new_test(void **memstack, long *num, std::mt19937 &gen)
+{
+	size_t top = 0;
+	clock_t temp = 0, add = 0;
+
+	for (long j = 0; j < NUM; ++j)
+	{
+		std::shuffle(memstack, memstack + top, gen);//随机打乱
+		long n = num[j];
+
+		if (n > 0)
+		{
+			temp = clock();//计时开始
+			for (long i = 0; i < n; ++i)
+			{
+				memstack[top++] = new char[SIZE];
+			}
+			add += clock() - temp;//计时累计
+		}
+		else if (n < 0)
+		{
+			temp = clock();//计时开始
+			for (long i = 0; i > n; --i)
+			{
+				delete[](char *)memstack[--top];
+			}
+			add += clock() - temp;//计时累计
+		}
+	}
+
+	temp = clock();//计时开始
+	while (top > 0)
+	{
+		delete[](char *)memstack[--top];
+	}
+	add += clock() - temp;//计时累计
+
+	return add;
+}
+
+clock_t my_test(void **memstack, long *num, std::mt19937 &gen)
+{
+	size_t top = 0;
+	clock_t temp = 0, add = 0;
+
+	temp = clock();//计时开始
+	my a(SIZE, BLOCK_NUM);
+	add += clock() - temp;//计时累计
+
+	for (long j = 0; j < NUM; ++j)
+	{
+		std::shuffle(memstack, memstack + top, gen);//随机打乱
+		long n = num[j];
+
+		if (n > 0)
+		{
+			temp = clock();//计时开始
+			for (long i = 0; i < n; ++i)
+			{
+				memstack[top++] = a.AllocMemBlock();
+			}
+			add += clock() - temp;//计时累计
+		}
+		else if (n < 0)
+		{
+			temp = clock();//计时开始
+			for (long i = 0; i > n; --i)
+			{
+				a.FreeMemBlock(memstack[--top]);
+			}
+			add += clock() - temp;//计时累计
+		}
+	}
+
+	temp = clock();//计时开始
+	while (top > 0)
+	{
+		a.FreeMemBlock(memstack[--top]);
+	}
+	a.~my();
+	add += clock() - temp;//计时累计
+
+	return add;
+}
+
+clock_t myauto_test(void **memstack, long *num, std::mt19937 &gen)
+{
+	size_t top = 0;
+	clock_t temp = 0, add = 0;
+
+	temp = clock();//计时开始
+	my_auto a(SIZE, 1);
+	add += clock() - temp;//计时累计
+
+	for (long j = 0; j < NUM; ++j)
+	{
+		std::shuffle(memstack, memstack + top, gen);//随机打乱
+		long n = num[j];
+
+		if (n > 0)
+		{
+			temp = clock();//计时开始
+			for (long i = 0; i < n; ++i)
+			{
+				memstack[top++] = a.AllocMemBlock();
+			}
+			add += clock() - temp;//计时累计
+		}
+		else if (n < 0)
+		{
+			temp = clock();//计时开始
+			for (long i = 0; i > n; --i)
+			{
+				a.FreeMemBlock(memstack[--top]);
+			}
+			add += clock() - temp;//计时累计
+		}
+	}
+
+	temp = clock();//计时开始
+	while (top > 0)
+	{
+		a.FreeMemBlock(memstack[--top]);
+	}
+	a.~my_auto();
+	add += clock() - temp;//计时累计
+
+	return add;
+}
+
+int test_4(void)
+{
+	std::mt19937 gen{std::random_device{}()};
+	std::normal_distribution<> d{MEDIUM,OFFSET};
+
+	long *num = new long[NUM];
+	void **memstack = new void *[MAX];
+
+	for (size_t n = 0; n < NUM; ++n)//得出随机数列
+	{
+		num[n] = std::max((long)MIN, (long)std::round(d(gen)));//如果x低于下限，则令x截断至MIN
+		num[n] = std::min((long)MAX, num[n]);//如果高于上限，则令x截断至MAX
+	}
+
+	for (size_t i = NUM - 1; i >= 1; i--)//计算差值
+	{
+		num[i] -= num[i - 1];
+	}
+
+	clock_t cnew = new_test(memstack, num, gen);
+	clock_t cmy = my_test(memstack, num, gen);
+	clock_t cmyauto = myauto_test(memstack, num, gen);
+
+	
+	printf(
+		"new   :%.6lfs\n"\
+		"my    :%.6lfs\n"\
+		"myauto:%.6lfs\n",
+		CLOCKTOSEC(cnew),
+		CLOCKTOSEC(cmy),
+		CLOCKTOSEC(cmyauto));
+
+	delete[] memstack;
+	delete[] num;
+
+	return 0;
+}

@@ -36,7 +36,8 @@ template <
 	size_t szAlignBlockNum = 2,//内存池内存块个数对齐的边界
 	size_t szAlignment = 4,//管理内存池的对齐边界
 	typename Alloc_func = default_alloc,//管理内存池的默认分配器
-	typename Free_func = default_free>//管理内存池的默认释放器
+	typename Free_func = default_free//管理内存池的默认释放器
+>
 class AutoExpand_FixLen_MemPool
 {
 	static_assert(szExpandMultiple >= 2);
@@ -273,6 +274,7 @@ private:
 
 public:
 	using RetPoint_Type = Type;
+	using PoolClass_Type = Pool_class;
 	static constexpr size_t szMaxMemPool = PNODE_ARR_MAX_NUM;//类中最多能存下的内存池个数
 	static constexpr size_t szManageMemPoolRequireSize = sizeof(Node) * 2;//管理一个内存池所需的管理内存大小
 	static constexpr size_t szAlignBlockNumSize = szAlignBlockNum;//内存块个数对齐到的大小
@@ -493,10 +495,10 @@ public:
 		return true;
 	}
 
-	using Up_Func = bool (*)(const Pool_class &c);
+	using Up_Func = bool (*)(const PoolClass_Type &c);
 
 	//示例函数
-	static bool default_remove(const Pool_class &c)
+	static bool default_remove(const PoolClass_Type &c)
 	{
 		if (c.GetMemBlockUse() == 0 && c.GetMemBlockNum() < 64)
 		{
@@ -528,7 +530,7 @@ public:
 	}
 
 	//示例函数
-	static bool default_reset(const Pool_class &c)
+	static bool default_reset(const PoolClass_Type &c)
 	{
 		if (c.GetMemBlockUse() != 0)
 		{
@@ -556,7 +558,7 @@ public:
 	}
 
 	//示例函数
-	static bool default_traverse(const Pool_class &c)
+	static bool default_traverse(const PoolClass_Type &c)
 	{
 		if (c.GetMemBlockUse() != 0)
 		{
