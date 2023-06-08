@@ -309,6 +309,27 @@ int test_3(void)
 			printf("  free:ok\n");
 		}
 
+#ifdef MYAUTO
+		putchar('\n');
+		printf("use:%zu\n", a.GetMemBlockUse());//获取使用数
+		printf("all:%zu\n", a.GetMemBlockNum());//获取总内存块数
+
+		printf("pool num:%zu\n", a.GetPoolNum());//获取总内存池数
+		printf("free pool:%zu\n", a.GetFreePoolNum());//获取空闲内存池数
+		printf("full pool:%zu\n", a.GetFullPoolNum());//获取满内存池数
+
+		int iCur = 0;
+		auto printEvery = [&](const my &c) -> bool
+		{
+			printf("Cur:%d ", iCur++);
+			printf("use:%zu,all:%zu\n", c.GetMemBlockUse(), c.GetMemBlockNum());
+
+			return true;
+		};
+		a.TraverseEligibleMemPool(printEvery);
+		putchar('\n');
+#endif // MYAUTO
+
 		//单次计时
 		unin = clock();
 		UNIN();

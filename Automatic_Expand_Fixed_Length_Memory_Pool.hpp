@@ -99,10 +99,10 @@ private:
 
 	Manage_Pool csMemPool = Manage_Pool(sizeof(Node), PNODE_ARR_MAX_NUM);//用一个内存池来管理后续的内部分配释放
 
-	size_t szMemBlockPreAllocNum = 0;//用户初始化时指定的预分配大小
 	size_t szMemBlockFixSize = 0;//用户初始化时需要的定长内存长度（size：字节数）
 	size_t szMemBlockNum = 0;//内存池中总内存块个数
-	size_t szMemBlockUse = 0;//内存池中使用内存块个数
+	size_t szMemBlockUse = 0;//内存池中使用内存块个数	
+	size_t szMemBlockPreAllocNum = 0;//用户初始化时指定的预分配大小
 private:
 	//构造并返回一个节点，用于构造新的内存池
 	Node *ConstructorNode(size_t _szMemBlockFixSize, size_t _szMemBlockPreAllocNum, size_t _szArrIdx) noexcept
@@ -285,7 +285,9 @@ public:
 	AutoExpand_FixLen_MemPool(size_t _szMemBlockFixSize = sizeof(Type), size_t _szMemBlockPreAllocNum = 1024) ://把_szMemBlockPreAllocNum向上舍入到最近的2的指数次方
 		szMemBlockFixSize(_szMemBlockFixSize),
 		szMemBlockPreAllocNum(_szMemBlockPreAllocNum)
-	{}
+	{
+		AddFirstMemPool(szMemBlockPreAllocNum);
+	}
 
 	//禁用函数
 	AutoExpand_FixLen_MemPool(const AutoExpand_FixLen_MemPool &) = delete;//禁用类拷贝构造
@@ -298,23 +300,26 @@ public:
 
 		csMemPool(std::move(_Move.csMemPool)),
 
-		szMemBlockPreAllocNum(_Move.szMemBlockPreAllocNum),
 		szMemBlockFixSize(_Move.szMemBlockFixSize),
 		szMemBlockNum(_Move.szMemBlockNum),
-		szMemBlockUse(_Move.szMemBlockUse)
+		szMemBlockUse(_Move.szMemBlockUse),
+		szMemBlockPreAllocNum(_Move.szMemBlockPreAllocNum)
 	{
 		//拷贝数组
 		memcpy(pNodeArrFreePool, _Move.pNodeArrFreePool, sizeof(pNodeArrFreePool));
 		memcpy(pNodeArrSortPool, _Move.pNodeArrSortPool, sizeof(pNodeArrSortPool));
 
 		//清空成员
+		//memset(_Move.pNodeArrFreePool, 0, sizeof(_Move.pNodeArrFreePool));
+		//memset(_Move.pNodeArrSortPool, 0, sizeof(_Move.pNodeArrSortPool));
+
 		_Move.szArrEnd = 0;
 		_Move.szArrLastSwap = 0;
 
-		szMemBlockPreAllocNum = 0;
 		_Move.szMemBlockFixSize = 0;
 		_Move.szMemBlockNum = 0;
 		_Move.szMemBlockUse = 0;
+		_Move.szMemBlockPreAllocNum = 0;
 	}
 
 	//析构
@@ -325,15 +330,18 @@ public:
 		{
 			DestructorNode(pNodeArrSortPool[i]);//依次析构回收内存
 		}
+
 		//两个数组内引用的都是同一段内存，所以清理其中一个即可
+		//memset(pNodeArrFreePool, 0, sizeof(pNodeArrFreePool));
+		//memset(pNodeArrSortPool, 0, sizeof(pNodeArrSortPool));
 
 		szArrEnd = 0;
 		szArrLastSwap = 0;
 
-		szMemBlockPreAllocNum = 0;
 		szMemBlockFixSize = 0;
 		szMemBlockNum = 0;
 		szMemBlockUse = 0;
+		szMemBlockPreAllocNum = 0;
 	}
 
 	//请求分配一个内存块
