@@ -11,5 +11,5 @@ int test_4(void);
 
 int main(void)
 {
-	return test_3();
+	return test_4();
 }

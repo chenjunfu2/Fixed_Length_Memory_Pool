@@ -362,13 +362,13 @@ int test_3(void)
 
 #undef SIZE
 #define SIZE BLOCK_SIZE//内存单元大小
-#define NUM 65536//内存操作次数
+#define NUM 65536*2//内存操作次数
 
 #define MEDIUM 10240 //随机数均值
 #define OFFSET 5120 //随机数偏移
 
 #define MIN 512 //随机数最小值
-#define MAX INT_MAX/4//随机数最大值
+#define MAX INT_MAX/2//随机数最大值
 
 clock_t new_test(void **memstack, long *num, std::mt19937 &gen)
 {
@@ -520,9 +520,11 @@ int test_4(void)
 	}
 
 	clock_t cnew = new_test(memstack, num, gen);
+	puts("new:ok");
 	clock_t cmy = my_test(memstack, num, gen);
+	puts("my:ok");
 	clock_t cmyauto = myauto_test(memstack, num, gen);
-
+	puts("myauto:ok\n");
 	
 	printf(
 		"new   :%.6lfs\n"\
