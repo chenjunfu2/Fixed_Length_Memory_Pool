@@ -370,7 +370,7 @@ int test_3(void)
 #define MIN 512 //随机数最小值
 #define MAX INT_MAX/2//随机数最大值
 
-clock_t new_test(void **memstack, long *num, std::mt19937 &gen)
+clock_t new_test(void **memstack, const long *num, std::mt19937 &gen)
 {
 	size_t top = 0;
 	clock_t temp = 0, add = 0;
@@ -400,6 +400,8 @@ clock_t new_test(void **memstack, long *num, std::mt19937 &gen)
 		}
 	}
 
+	std::shuffle(memstack, memstack + top, gen);//随机打乱
+
 	temp = clock();//计时开始
 	while (top > 0)
 	{
@@ -410,7 +412,7 @@ clock_t new_test(void **memstack, long *num, std::mt19937 &gen)
 	return add;
 }
 
-clock_t my_test(void **memstack, long *num, std::mt19937 &gen)
+clock_t my_test(void **memstack, const long *num, std::mt19937 &gen)
 {
 	size_t top = 0;
 	clock_t temp = 0, add = 0;
@@ -430,6 +432,10 @@ clock_t my_test(void **memstack, long *num, std::mt19937 &gen)
 			for (long i = 0; i < n; ++i)
 			{
 				memstack[top++] = a.AllocMemBlock();
+				if (memstack[top - 1] == NULL)
+				{
+					return 0;
+				}
 			}
 			add += clock() - temp;//计时累计
 		}
@@ -444,6 +450,8 @@ clock_t my_test(void **memstack, long *num, std::mt19937 &gen)
 		}
 	}
 
+	std::shuffle(memstack, memstack + top, gen);//随机打乱
+
 	temp = clock();//计时开始
 	while (top > 0)
 	{
@@ -455,7 +463,7 @@ clock_t my_test(void **memstack, long *num, std::mt19937 &gen)
 	return add;
 }
 
-clock_t myauto_test(void **memstack, long *num, std::mt19937 &gen)
+clock_t myauto_test(void **memstack, const long *num, std::mt19937 &gen)
 {
 	size_t top = 0;
 	clock_t temp = 0, add = 0;
@@ -488,6 +496,8 @@ clock_t myauto_test(void **memstack, long *num, std::mt19937 &gen)
 			add += clock() - temp;//计时累计
 		}
 	}
+
+	std::shuffle(memstack, memstack + top, gen);//随机打乱
 
 	temp = clock();//计时开始
 	while (top > 0)
