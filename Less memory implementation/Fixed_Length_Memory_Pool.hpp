@@ -140,8 +140,8 @@ public:
 	static constexpr size_t szAlignmentSize = szAlignment;//对齐内存的边界
 	static constexpr size_t szMemBlockMinSize = sizeof(FreeBlock);//内存块大小下限
 
-	//构造函数,第一个参数为起始内存池预分配的初始内存块个数,第二个参数为定长内存块的大小,默认值是Type的大小
-	FixLen_MemPool(size_t _szMemBlockPreAllocNum, size_t _szMemBlockFixSize = sizeof(Type))
+	//构造函数,第一个参数为起始内存池预分配的初始内存块个数,第二个参数为定长内存块的大小
+	FixLen_MemPool(size_t _szMemBlockFixSize, size_t _szMemBlockPreAllocNum)
 	{
 		Realloc(_szMemBlockFixSize, _szMemBlockPreAllocNum);
 	}
@@ -260,7 +260,7 @@ public:
 	}
 
 	//重分配内存池，注意，该函数会导致内存池分配出的内存块全部失效！
-	void Realloc(size_t _szMemBlockPreAllocNum = 1024, size_t _szMemBlockFixSize = sizeof(Type))
+	void Realloc(size_t _szMemBlockFixSize = sizeof(Type), size_t _szMemBlockPreAllocNum = 1024)
 	{
 		Clear();//先清理原先的内存池
 
