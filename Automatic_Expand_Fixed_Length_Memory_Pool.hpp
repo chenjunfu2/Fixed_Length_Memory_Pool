@@ -87,7 +87,7 @@ protected:
 	};
 
 	using Type = Pool_class::RetPoint_Type;
-	using Manage_Pool = FixLen_MemPool<Node, false, szAlignment, Alloc_func, Free_func>;
+	using Manage_Pool = FixLen_MemPool<Node, szAlignment, false, Alloc_func, Free_func>;
 
 private:
 	Node *pNodeArrFreePool[PNODE_ARR_MAX_NUM] = {0};//空闲内存池（szArrLastSwap索引左边，不包括其指代都为空闲内存池，右边，包括其指代都为已满内存池）
@@ -308,32 +308,16 @@ public:
 		//拷贝数组
 		memcpy(pNodeArrFreePool, _Move.pNodeArrFreePool, sizeof(pNodeArrFreePool));
 		memcpy(pNodeArrSortPool, _Move.pNodeArrSortPool, sizeof(pNodeArrSortPool));
-
-		//清空成员
-		//memset(_Move.pNodeArrFreePool, 0, sizeof(_Move.pNodeArrFreePool));
-		//memset(_Move.pNodeArrSortPool, 0, sizeof(_Move.pNodeArrSortPool));
-
-		_Move.szArrEnd = 0;
-		_Move.szArrLastSwap = 0;
-
-		_Move.szMemBlockFixSize = 0;
-		_Move.szMemBlockNum = 0;
-		_Move.szMemBlockUse = 0;
-		_Move.szMemBlockPreAllocNum = 0;
 	}
 
 	//析构
 	~AutoExpand_FixLen_MemPool(void) noexcept
 	{
 		//依次析构回收内存池	
-		for (size_t i = szArrBeg; i < szArrEnd; ++i)
+		for (size_t i = szArrBeg; i < szArrEnd; ++i)//两个数组内引用的都是同一段内存，所以清理其中一个即可
 		{
 			DestructorNode(pNodeArrSortPool[i]);//依次析构回收内存
 		}
-
-		//两个数组内引用的都是同一段内存，所以清理其中一个即可
-		//memset(pNodeArrFreePool, 0, sizeof(pNodeArrFreePool));
-		//memset(pNodeArrSortPool, 0, sizeof(pNodeArrSortPool));
 
 		szArrEnd = 0;
 		szArrLastSwap = 0;
