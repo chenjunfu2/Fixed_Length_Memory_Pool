@@ -308,6 +308,15 @@ public:
 		//拷贝数组
 		memcpy(pNodeArrFreePool, _Move.pNodeArrFreePool, sizeof(pNodeArrFreePool));
 		memcpy(pNodeArrSortPool, _Move.pNodeArrSortPool, sizeof(pNodeArrSortPool));
+
+		//清除成员
+		_Move.szArrEnd = 0;
+		_Move.szArrLastSwap = 0;
+
+		_Move.szMemBlockFixSize = 0;
+		_Move.szMemBlockNum = 0;
+		_Move.szMemBlockUse = 0;
+		_Move.szMemBlockPreAllocNum = 0;
 	}
 
 	//析构

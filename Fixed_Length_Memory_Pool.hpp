@@ -178,9 +178,9 @@ protected:
 
 public:
 	using RetPoint_Type = Type;
-	static constexpr size_t szManageMemBlockRequireSize = sizeof(*bArrMemBlockBitmap) + (bLessMemExpend ? 0 : sizeof(*unFree.pArrFreeMemBlockStack));//管理一个内存块所需的管理内存大小
+	static constexpr size_t szManageMemBlockRequireSize = sizeof(*bArrMemBlockBitmap) + (bLessMemExpend == true ? 0 : sizeof(*unFree.pArrFreeMemBlockStack));//管理一个内存块所需的管理内存大小
 	static constexpr size_t szAlignmentSize = szAlignment;//对齐内存的边界
-	static constexpr size_t szMemBlockMinSize = bLessMemExpend ? 1 : sizeof(FreeBlock);//内存块大小下限
+	static constexpr size_t szMemBlockMinSize = bLessMemExpend == true ? 1 : sizeof(FreeBlock);//内存块大小下限
 	static constexpr size_t szMemBlockMinNum = 1;//内存块个数下限
 
 	//构造函数,第一个参数为起始内存池预分配的初始内存块个数,第二个参数为定长内存块的大小
