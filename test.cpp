@@ -28,7 +28,7 @@ int test_0(void)
 
 	start = clock();
 	{
-		FixLen_MemPool<void, false> a(BLOCK_SIZE, BLOCK_NUM);
+		FixLen_MemPool<void> a(BLOCK_SIZE, BLOCK_NUM);
 		for (int i = 0; i < BLOCK_NUM; ++i)
 		{
 			pArr[i] = a.AllocMemBlock();
@@ -93,7 +93,7 @@ int test_1(void)
 
 	start = Now();
 	{
-		FixLen_MemPool<void, false> mem_pool(SIZE, MAX_CYCLE);
+		FixLen_MemPool<void> mem_pool(SIZE, MAX_CYCLE);
 		for (int i = 0; i < MAX_CYCLE; ++i)
 			arr[i] = mem_pool.AllocMemBlock();
 		for (int i = 0; i < MAX_CYCLE; ++i)
@@ -130,8 +130,7 @@ int test_1(void)
 //随机分配释放测试
 int test_2(void)
 {
-	//FixLen_MemPool<void> a(10, 1024);
-	FixLen_MemPool<void, false> a(10, 1024);
+	FixLen_MemPool<void> a(10, 1024);
 	std::vector<void *> v;
 
 	//分配一部分
@@ -194,8 +193,8 @@ int test_2(void)
 }
 
 
-#define MYAUTO
-using my = FixLen_MemPool<void>;
+#define MY
+using my = FixLen_MemPool<void, 4, false>;
 using my_auto = AutoExpand_FixLen_MemPool<my>;
 
 #ifdef MY
@@ -546,6 +545,44 @@ int test_4(void)
 
 	delete[] memstack;
 	delete[] num;
+
+	return 0;
+}
+
+
+#define TEST_COUNT (UINT_MAX/8)//67108864
+using _my = FixLen_MemPool<unsigned int, 4, false>;//bLessMemExpend: true:8711.9mb false:10759.9mb
+using _my_auto = AutoExpand_FixLen_MemPool<_my>;
+
+//内存池数据校验测试
+int test_5(void)
+{
+	_my m1(sizeof(unsigned int), TEST_COUNT);
+	unsigned int **arr = new unsigned int*[TEST_COUNT];
+
+
+	srand(0);//固定种子，固定序列
+	for (long i = 0; i < TEST_COUNT; ++i)
+	{
+		arr[i] = m1.AllocMemBlock();
+		*arr[i] = rand();
+	}
+
+	printf("fill ok!\n");
+
+	srand(0);//重置
+	for (long i = 0; i < TEST_COUNT; ++i)
+	{
+		unsigned int r = rand();
+		if (*arr[i] != r)
+		{
+			printf("error! %d!=%d,i=%ld,addr=%p\n", *arr[i], r, i, arr[i]);
+			break;
+		}
+	}
+
+	delete[] arr;
+	printf("test end.\n");
 
 	return 0;
 }

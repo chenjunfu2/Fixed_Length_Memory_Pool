@@ -7,9 +7,10 @@ int test_1(void);
 int test_2(void);
 int test_3(void);
 int test_4(void);
+int test_5(void);
 
 
 int main(void)
 {
-	return test_4();
+	return test_5();
 }
