@@ -551,17 +551,20 @@ int test_4(void)
 
 
 #define TEST_COUNT (UINT_MAX/8)//67108864
-using _my = FixLen_MemPool<unsigned int, 4, false>;//bLessMemExpend: true:8711.9mb false:10759.9mb
-using _my_auto = AutoExpand_FixLen_MemPool<_my>;
+#define RANDOM_SEED 0
+
+using safe_test = FixLen_MemPool<unsigned int, 4, true>;//bLessMemExpend: true:8711.9mb false:10759.9mb
+using safe_test_autoExp = AutoExpand_FixLen_MemPool<safe_test>;
 
 //内存池数据校验测试
 int test_5(void)
 {
-	_my m1(sizeof(unsigned int), TEST_COUNT);
+	safe_test m1(sizeof(unsigned int), TEST_COUNT);
+	//safe_test_autoExp m1(sizeof(unsigned int), 1);
 	unsigned int **arr = new unsigned int*[TEST_COUNT];
 
 
-	srand(0);//固定种子，固定序列
+	srand(RANDOM_SEED);//固定种子，固定序列
 	for (long i = 0; i < TEST_COUNT; ++i)
 	{
 		arr[i] = m1.AllocMemBlock();
@@ -570,13 +573,13 @@ int test_5(void)
 
 	printf("fill ok!\n");
 
-	srand(0);//重置
+	srand(RANDOM_SEED);//重置
 	for (long i = 0; i < TEST_COUNT; ++i)
 	{
 		unsigned int r = rand();
 		if (*arr[i] != r)
 		{
-			printf("error! %d!=%d,i=%ld,addr=%p\n", *arr[i], r, i, arr[i]);
+			printf("error: *arr[%d]=%d, rand=%d\n", i, *arr[i], r);
 			break;
 		}
 	}
