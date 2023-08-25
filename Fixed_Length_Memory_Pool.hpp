@@ -142,6 +142,7 @@ protected:
 		return (void *)(((uintptr_t)pMem + szAlignment - 1) & ~(szAlignment - 1));
 	}
 
+	//分配内存池，分配后必须Reset才能使用！
 	void Alloc(size_t _szMemBlockFixSize, size_t _szMemBlockPreAllocNum)
 	{
 		szMemBlockFixSize = _szMemBlockFixSize;
@@ -158,29 +159,45 @@ protected:
 			szMemBlockNum = szMemBlockMinNum;
 		}
 
-		//位图、内存池的起始地址全部对齐到szAlignment
-		size_t szBitMapAlignedSize = AlignedSize(szMemBlockNum * sizeof(*bArrMemBlockBitmap));//从上一个对齐地址加上这个数值就是下一个对齐地址的开始
-		size_t szStackAlignedSize = AlignedSize(szMemBlockNum * sizeof(*unFree.pArrFreeMemBlockStack));//栈数组地址
-		szMemPoolSize = szMemBlockNum * szMemBlockFixSize;//此处内存池后无后继结构，无需对齐
 
-		//一次性分配
-		size_t szBaseMemSize = szBitMapAlignedSize + szMemPoolSize + (szAlignment - 1);//计算总所需内存
-		pBaseMem = ThrowMalloc(szBaseMemSize);//请求内存
-
-		//分割
-		bArrMemBlockBitmap = (bool *)AlignedMem(pBaseMem);
-		if constexpr (!bLessMemExpend)
+		if constexpr (bLessMemExpend == true)
 		{
-			unFree.pArrFreeMemBlockStack = (void **)((uintptr_t)bArrMemBlockBitmap + szBitMapAlignedSize);//bLessMemExpend将在后续Reset内设置
+			//位图、内存池的起始地址全部对齐到szAlignment
+			size_t szBitMapAlignedSize = AlignedSize(szMemBlockNum * sizeof(*bArrMemBlockBitmap));//从上一个对齐地址加上这个数值就是下一个对齐地址的开始
+			szMemPoolSize = szMemBlockNum * szMemBlockFixSize;//此处内存池后无后继结构，无需对齐
+
+			//一次性分配
+			size_t szBaseMemSize = szBitMapAlignedSize + szMemPoolSize + (szAlignment - 1);//计算总所需内存
+			pBaseMem = ThrowMalloc(szBaseMemSize);//请求内存
+
+			//分割
+			bArrMemBlockBitmap = (bool *)AlignedMem(pBaseMem);
+			//unFree.pFreeMemBlockHead会在Reset内设置
+			pMemPool = (void *)((uintptr_t)bArrMemBlockBitmap + szBitMapAlignedSize);
 		}
-		pMemPool = (void *)((uintptr_t)bArrMemBlockBitmap + szBitMapAlignedSize);
+		else
+		{
+			//位图、栈、内存池的起始地址全部对齐到szAlignment
+			size_t szBitMapAlignedSize = AlignedSize(szMemBlockNum * sizeof(*bArrMemBlockBitmap));//计算位图大小，从上一个对齐地址加上这个数值就是下一个对齐地址的开始
+			size_t szStackAlignedSize = AlignedSize((szMemBlockNum) * sizeof(*unFree.pArrFreeMemBlockStack));//计算栈数组大小，从上一个对齐地址加上这个数值就是下一个对齐地址的开始
+			szMemPoolSize = szMemBlockNum * szMemBlockFixSize;//此处内存池后无后继结构，无需对齐
+
+			//一次性分配
+			size_t szBaseMemSize = szBitMapAlignedSize + szStackAlignedSize + szMemPoolSize + szAlignment - 1;//计算总所需内存
+			pBaseMem = ThrowMalloc(szBaseMemSize);//请求内存
+
+			//分割
+			bArrMemBlockBitmap = (bool *)AlignedMem(pBaseMem);
+			unFree.pArrFreeMemBlockStack = (void **)((uintptr_t)bArrMemBlockBitmap + szBitMapAlignedSize);
+			pMemPool = (void *)((uintptr_t)unFree.pArrFreeMemBlockStack + szStackAlignedSize);
+		}
 	}
 
 public:
 	using RetPoint_Type = Type;
 	static constexpr size_t szManageMemBlockRequireSize = sizeof(*bArrMemBlockBitmap) + (bLessMemExpend == true ? 0 : sizeof(*unFree.pArrFreeMemBlockStack));//管理一个内存块所需的管理内存大小
 	static constexpr size_t szAlignmentSize = szAlignment;//对齐内存的边界
-	static constexpr size_t szMemBlockMinSize = bLessMemExpend == true ? 1 : sizeof(FreeBlock);//内存块大小下限
+	static constexpr size_t szMemBlockMinSize = (bLessMemExpend == true ? sizeof(FreeBlock) : 1);//内存块大小下限
 	static constexpr size_t szMemBlockMinNum = 1;//内存块个数下限
 
 	//构造函数,第一个参数为起始内存池预分配的初始内存块个数,第二个参数为定长内存块的大小
@@ -229,7 +246,7 @@ public:
 	{
 		void *pFreeMemBlock;
 
-		if constexpr (bLessMemExpend)
+		if constexpr (bLessMemExpend == true)
 		{
 			if (unFree.pFreeMemBlockHead == NULL)//没有空闲内存块了
 			{
@@ -291,7 +308,7 @@ public:
 		bArrMemBlockBitmap[szBitmapIndex] = false;
 
 
-		if constexpr (bLessMemExpend)
+		if constexpr (bLessMemExpend == true)
 		{
 			//设置使用个数
 			--unCount.szMemBlockUse;
@@ -370,7 +387,7 @@ public:
 		//设置位图为未分配
 		memset(bArrMemBlockBitmap, false, szMemBlockNum * sizeof(bool));
 
-		if constexpr (bLessMemExpend)
+		if constexpr (bLessMemExpend == true)
 		{
 			//设置链表头指向第一个内存块
 			unFree.pFreeMemBlockHead = (FreeBlock *)pMemPool;
@@ -438,7 +455,7 @@ public:
 	//获取内存池总共已用的内存块数
 	size_t GetMemBlockUse(void) const noexcept
 	{
-		if constexpr (bLessMemExpend)
+		if constexpr (bLessMemExpend == true)
 		{
 			return unCount.szMemBlockUse;
 		}
